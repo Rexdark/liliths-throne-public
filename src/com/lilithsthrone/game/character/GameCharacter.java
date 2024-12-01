@@ -321,7 +321,7 @@ public abstract class GameCharacter implements XMLSaving {
 	public static final int MAX_COMBAT_MOVES = 8;
 	public static final int DEFAULT_COMBAT_AP = 3;
 
-	public static final int MINIMUM_AGE = 18;
+	public static final int MINIMUM_AGE = 0;
 	
 	public static final int DEFAULT_TIME_START_VALUE = -1;
 	
@@ -3772,9 +3772,9 @@ public abstract class GameCharacter implements XMLSaving {
 				} else {
 					infoScreenSB.append(UtilText.parse(this,
 							", which"
-							+ (!this.isPlayer()
-								?", due to the fact that everyone in this world starts out as being 18 from the date of their birth,"
-								:"")
+							//+ (!this.isPlayer()
+							//	?", due to the fact that everyone in this world starts out as being 18 from the date of their birth,"
+							//	:"")
 							+ " makes [npc.herHim] <span style='color:"+this.getAge().getColour().toWebHexString()+";'>"+Util.intToString(this.getAgeValue())+"</span> years old."));
 				}
 				
