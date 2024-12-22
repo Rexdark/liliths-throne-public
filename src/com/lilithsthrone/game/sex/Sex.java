@@ -244,6 +244,7 @@ public class Sex {
 	
 	// Counting for stats:
 	private Map<GameCharacter, Integer> orgasmCountMap;
+	private Map<GameCharacter, Integer> additionalOrgasmsNeededMap;
 	/**Maps: Characters performing denials -> Map of characters they've denied mapped to the number of times they were denied. */
 	private Map<GameCharacter, Map<GameCharacter, Integer>> deniedOrgasmsCountMap;
 	private Map<GameCharacter, Map<GameCharacter, Map<SexType, Integer>>> sexCountMap;
@@ -388,6 +389,7 @@ public class Sex {
 		sexFinished = false;
 		
 		orgasmCountMap = new HashMap<>();
+		additionalOrgasmsNeededMap = new HashMap<>();
 		deniedOrgasmsCountMap = new HashMap<>();
 		sexCountMap = new HashMap<>();
 		cummedInsideMap = new HashMap<>();
@@ -687,6 +689,16 @@ public class Sex {
 					case CHAINS:
 					case ROPE:
 						sexSB.append("Having been securely bound with "+(immobilisationType==ImmobilisationType.CHAINS?"chains":"ropes")+", ");
+						sexSB.append(Util.stringsToStringList(names, false));
+						if(names.size()>1 || immobilisedCharacters.contains(Main.game.getPlayer())) {
+							sexSB.append(" are");
+						} else {
+							sexSB.append(" is");
+						}
+						sexSB.append(" unable to move!");
+						break;
+					case STOCKS:
+						sexSB.append("Having been securely locked into a set of stocks, ");
 						sexSB.append(Util.stringsToStringList(names, false));
 						if(names.size()>1 || immobilisedCharacters.contains(Main.game.getPlayer())) {
 							sexSB.append(" are");
@@ -3040,6 +3052,9 @@ public class Sex {
 			charactersRequestingKnot = new HashSet<>();
 			charactersRequestingPullout = new HashMap<>();
 			SexFlags.playerPreparedForCharactersOrgasm.remove(getCharacterPerformingAction());
+			
+			// Remove status effect:
+			getCharacterPerformingAction().removeStatusEffect(StatusEffect.DESPERATELY_HORNY);
 		}
 
 		// Handle if parts have just become exposed:
@@ -6115,6 +6130,18 @@ public class Sex {
 		character.incrementTotalOrgasmCount(increment);
 		orgasmCountMap.putIfAbsent(character, 0);
 		orgasmCountMap.put(character, orgasmCountMap.get(character)+increment);
+	}
+	
+	public int getNumberOfAdditionalOrgasms(GameCharacter character) {
+		return additionalOrgasmsNeededMap.getOrDefault(character, 0);
+	}
+	
+	public void setNumberOfAdditionalOrgasms(GameCharacter character, int count) {
+		additionalOrgasmsNeededMap.put(character, count);
+	}
+	
+	public void incrementNumberOfAdditionalOrgasms(GameCharacter character, int increment) {
+		additionalOrgasmsNeededMap.merge(character, increment, Integer::sum);
 	}
 
 	public int getNumberOfDeniedOrgasms(GameCharacter characterDenied) {

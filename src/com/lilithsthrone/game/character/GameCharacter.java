@@ -6890,7 +6890,7 @@ public abstract class GameCharacter implements XMLSaving {
 		
 		setPotionAttributes(savedPotionEffects);
 		
-		value *= this.isPlayer() && this.hasTrait(Perk.JOB_CHEF, true) && withExtaEffects?2:1;
+		value *= (this.hasTrait(Perk.JOB_CHEF, true) && withExtaEffects)?2:1;
 		
 		if(potionAttributes.containsKey(att)) {
 			setPotionAttribute(att, potionAttributes.get(att)+value);
@@ -6902,7 +6902,7 @@ public abstract class GameCharacter implements XMLSaving {
 			potionAttributes.remove(att);
 		}
 		
-		potionTimeRemaining += 30 * 60 * (this.isPlayer() && this.hasTrait(Perk.JOB_CHEF, true) && withExtaEffects?2:1);
+		potionTimeRemaining += 30 * 60 * ((this.hasTrait(Perk.JOB_CHEF, true) && withExtaEffects)?2:1);
 		
 		if(potionTimeRemaining>=12*60*60) {
 			addStatusEffect(StatusEffect.POTION_EFFECTS, 12*60*60);
@@ -8059,28 +8059,31 @@ public abstract class GameCharacter implements XMLSaving {
 	}
 	
 	public int getOrgasmsBeforeSatisfied() {
-		int increment = 0;
+		int goal = 1;
 		if(Main.game.isInSex()) {
 			for(GameCharacter character : Main.sex.getAllParticipants(false)) {
 				if(!character.equals(this) && character.hasTraitActivated(Perk.OBJECT_OF_DESIRE)) {
-					increment++;
+					goal++;
 					break; // Prevent this from stacking
 				}
 			}
 		}
 		
+		
 		if(!this.isPlayer()) {
 			if(this.getSubspeciesOverride()!=null && this.getSubspeciesOverride().equals(Subspecies.HALF_DEMON)) {
-				return 2+increment;
-			} else if(this.getRace().equals(Race.DEMON)) {
-				if(this.getSubspecies().equals(Subspecies.IMP) || this.getSubspecies().equals(Subspecies.IMP_ALPHA)) {
-					return 1+increment;
-				}
-				return 3+increment;
+				goal += 1;
+			} else if(this.getRace().equals(Race.DEMON) && !this.getSubspecies().equals(Subspecies.IMP) && !this.getSubspecies().equals(Subspecies.IMP_ALPHA)) {
+				goal += 2;
 			}
 		}
 		
-		return 1 + increment + (this.hasStatusEffect(StatusEffect.WEATHER_STORM_VULNERABLE)?1:0);
+		goal += (this.hasStatusEffect(StatusEffect.WEATHER_STORM_VULNERABLE)?1:0);
+		goal += Main.sex.getNumberOfAdditionalOrgasms(this);
+		
+		goal = Math.max(goal, 1); // Prevent zero or negative just in case "additional orgasms" is negative
+		
+		return goal;
 	}
 	
 	
@@ -8596,6 +8599,30 @@ public abstract class GameCharacter implements XMLSaving {
 		}
 		
 		// Special cases:
+		
+		// Ferals
+		if(this.isFeral()) {
+			//If have no breasts, cannot target breasts:
+			if(!this.getFeralAttributes().isBreastsPresent() && (type.getPerformingSexArea()==SexAreaOrifice.NIPPLE || type.getPerformingSexArea()==SexAreaOrifice.BREAST)) {
+				weight-=100000;
+			}
+			//If cannot use finger actions, cannot target fingers:
+			if(!this.getFeralAttributes().isFingerActionsAvailable() && (type.getPerformingSexArea()==SexAreaPenetration.FINGER)) {
+				weight-=100000;
+			}
+		}
+		if(target.isFeral()) {
+			//If have no breasts, cannot target breasts:
+			if(!target.getFeralAttributes().isBreastsPresent() && (type.getTargetedSexArea()==SexAreaOrifice.NIPPLE || type.getTargetedSexArea()==SexAreaOrifice.BREAST)) {
+				weight-=100000;
+			}
+			//If cannot use finger actions, cannot target fingers:
+			if(!target.getFeralAttributes().isFingerActionsAvailable() && (type.getTargetedSexArea()==SexAreaPenetration.FINGER)) {
+				weight-=100000;
+			}
+		}
+		
+//		target.getFeralAttributes().isFingerActionsAvailable()
 		
 		// Nipple-penetration content checks:
 		if(!Main.game.isNipplePenEnabled()) {
@@ -15693,6 +15720,9 @@ public abstract class GameCharacter implements XMLSaving {
 					break;
 				case ROPE:
 					sb.append("[npc.Name] [npc.verb(try)] to make a move as [npc2.namePos] "+areaString+" "+(plural?"are":"is")+" revealed, but the ropes binding [npc.her] body in place keep [npc.herHim] immobilised.");
+					break;
+				case STOCKS:
+					sb.append("[npc.Name] [npc.verb(try)] to make a move as [npc2.namePos] "+areaString+" "+(plural?"are":"is")+" revealed, but as [npc.sheIs] locked into a set of stocks [npc.sheIs] completely immobilised.");
 					break;
 				case COCOON:
 					sb.append("[npc.Name] [npc.verb(try)] to make a move as [npc2.namePos] "+areaString+" "+(plural?"are":"is")+" revealed, but [npc.her] cocoon's strong webbing keeps [npc.herHim] locked in place.");
