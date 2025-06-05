@@ -3134,6 +3134,108 @@ public class Subspecies {
 			return 0;
 		}
 	};
+	public static AbstractSubspecies HORSE_MORPH_PONY = new AbstractSubspecies(false,
+			12000,
+			"innoxia_race_horse_equine_cider",
+			"innoxia_race_horse_sugar_carrot_cube",
+			"statusEffects/race/raceHorseMorph",
+			"statusEffects/race/raceBackground",
+			"pony-morph",
+			"pony-morphs",
+			"pony-boy",
+			"pony-girl",
+			"pony-boys",
+			"pony-girls",
+			new FeralAttributes(
+					"pony",
+					"ponies",
+					"pony-stallion",
+					"pony-mare",
+					"pony-stallions",
+					"pony-mares",
+					LegConfiguration.QUADRUPEDAL,
+					130,
+					0,
+					1,
+					1,
+					1,
+					true),
+			Nocturnality.DIURNAL,
+			"While [npc.namePos] body possesses some of the strength and speed of their [npc.namePos] bigger equine cousins, [npc.sheIs] not as strong as them and still [npc.namePos] [npc.verb(struggle)] the same when it comes to harnessing the arcane.",
+			Util.newHashMapOfValues(
+					new Value<>(Attribute.MAJOR_PHYSIQUE, 15f),
+					new Value<>(Attribute.MAJOR_ARCANE, -5f),
+					new Value<>(Attribute.MAJOR_CORRUPTION, 0f),
+					new Value<>(Attribute.SPELL_COST_MODIFIER, -10f),
+					new Value<>(Attribute.DAMAGE_PHYSICAL, 15f),
+					new Value<>(Attribute.CRITICAL_DAMAGE, 15f)),
+			null,
+			"Equine Encyclopedia",
+			"Equine Encyclopedias",
+			"HORSE_MORPH_BASIC",
+			"HORSE_MORPH_ADVANCED",
+			Race.HORSE_MORPH,
+			Util.newHashMapOfValues(
+					new Value<>(PerkCategory.PHYSICAL, 5),
+					new Value<>(PerkCategory.LUST, 2),
+					new Value<>(PerkCategory.ARCANE, 0)),
+			Util.newHashMapOfValues(
+					new Value<>(PerkCategory.PHYSICAL, 10),
+					new Value<>(PerkCategory.LUST, 1),
+					new Value<>(PerkCategory.ARCANE, 0)),
+			PresetColour.RACE_HORSE_MORPH,
+			SubspeciesPreference.FOUR_ABUNDANT,
+			"An anthropomorphic, bipedal horse.",
+			Util.newHashMapOfValues(
+					new Value<>(WorldRegion.DOMINION, SubspeciesSpawnRarity.TEN),
+					new Value<>(WorldRegion.FIELDS, SubspeciesSpawnRarity.TEN),
+					new Value<>(WorldRegion.FIELD_CITY, SubspeciesSpawnRarity.TEN),
+					new Value<>(WorldRegion.DESERT_CITY, SubspeciesSpawnRarity.TEN),
+					new Value<>(WorldRegion.JUNGLE_CITY, SubspeciesSpawnRarity.TEN)),
+			Util.newHashMapOfValues(
+				new Value<>(WorldType.NIGHTLIFE_CLUB, SubspeciesSpawnRarity.TEN)), null, null) {
+		@Override
+		public void applySpeciesChanges(Body body) {
+			body.getHorn().setType(null, HornType.NONE);
+			body.getWing().setType(null, WingType.NONE);
+			body.setHeight(Height.NEGATIVE_ONE_TINY.getRandomValue());
+			if(body.getFace().getType()==FaceType.HORSE_MORPH && (!body.isFeminine() || Math.random()<0.5f)) {
+				body.getHair().setStyle(null, HairStyle.NONE); // Sets hair style to mane
+			}
+		}
+		@Override
+		public String[] getHalfDemonName(Body body) {
+			String[] names = new String[] {
+					"pooka",
+					"pookas",
+					"pooka",
+					"pooka",
+					"pookas",
+					"pooka"};
+			
+			if(body !=null && !body.getHalfDemonSubspecies().isNonBiped()) {
+				names = new String[] {
+					applyNonBipedNameChange(body, "pooka", false, false),
+					applyNonBipedNameChange(body, "pooka", false, true),
+					applyNonBipedNameChange(body, "pooka", false, false),
+					applyNonBipedNameChange(body, "pooka", true, false),
+					applyNonBipedNameChange(body, "pooka", false, true),
+					applyNonBipedNameChange(body, "pooka", true, true)
+				};
+			}
+			
+			return names;
+		}
+		@Override
+		public int getSubspeciesWeighting(Body body, AbstractRace race) {
+			if(race==Race.HORSE_MORPH) {
+				if(body.getHeight()==Height.NEGATIVE_ONE_TINY) {
+					return 200;
+				}
+			}
+			return 0;
+		}
+	};
 	public static AbstractSubspecies HORSE_MORPH_UNICORN = new AbstractSubspecies(false,
 			30000,
 			"innoxia_race_horse_equine_cider",
