@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -2335,7 +2336,9 @@ public class Body implements XMLSaving {
 			} else {
 				heightDescription = " From head to tail,  [npc.she] [npc.verb(measure)] "+colouredHeightValue;
 			}
-		}
+		}		
+
+	    String raceDesc = getRaceDescriptor(owner);
 		
 		if (owner.isPlayer()) {
 			sb.append("You are [pc.name], "
@@ -2343,7 +2346,9 @@ public class Body implements XMLSaving {
 								?"<span style='color:"+owner.getFemininity().getColour().toWebHexString()+";'>[pc.a_femininity]</span> [pc.gender(true)] [style.colourHuman(human)]. "
 								:"[pc.a_fullRace(true)] [pc.gender(true)]. ")
 						+ owner.getAppearsAsGenderDescription(true)
-						+heightDescription+".");
+						+ heightDescription
+						+ ". "
+						+ raceDesc);
 		} else {
 			if(owner.isAreaKnownByCharacter(CoverableArea.PENIS, Main.game.getPlayer()) && owner.isAreaKnownByCharacter(CoverableArea.VAGINA, Main.game.getPlayer())) {
 				sb.append("[npc.Name] is "
@@ -2351,25 +2356,30 @@ public class Body implements XMLSaving {
 								?"<span style='color:"+owner.getFemininity().getColour().toWebHexString()+";'>[npc.a_femininity]</span> [npc.gender(true)] [style.colourHuman(human)]. "
 								:"[npc.a_fullRace(true)] [npc.gender(true)]. ")
 						+ owner.getAppearsAsGenderDescription(true)
-						+ heightDescription);
+						+ heightDescription
+						+ ". "
+						+ raceDesc);
 			} else {
 				if(observant) {
 					sb.append("Thanks to your observant perk, you can detect that [npc.name] is <span style='color:"+getGender().getColour().toWebHexString()+";'>[npc.a_gender]</span> [npc.raceStage] [npc.race]. "
 							+ owner.getAppearsAsGenderDescription(true)
-							+ heightDescription);
+							+ heightDescription
+							+ ". "
+							+ raceDesc);
 				} else {
 					sb.append("[npc.Name] is a [npc.a_fullRace(true)]. "
 								+ owner.getAppearsAsGenderDescription(true)
-								+ heightDescription);
+								+ heightDescription
+								+ ". "
+								+ raceDesc);
 				}
-			}
+			}			
+				
 			if(owner.isSizeDifferenceTallerThan(Main.game.getPlayer())) {
 				String descriptor = owner.isFeral() && !owner.getFeralAttributes().isSizeHeight()?"longer":"taller";
 				sb.append(", making [npc.herHim] <span style='color:"+PresetColour.BODY_SIZE_FOUR.toWebHexString()+";'>significantly "+descriptor+"</span> than you.");
 			} else if(owner.isSizeDifferenceShorterThan(Main.game.getPlayer())) {
 				sb.append(", making [npc.herHim] <span style='color:"+PresetColour.BODY_SIZE_ZERO.toWebHexString()+";'>significantly shorter</span> than you.");
-			} else {
-				sb.append(".");
 			}
 		}
 		
@@ -3527,6 +3537,581 @@ public class Body implements XMLSaving {
 
 		return UtilText.parse(owner, sb.toString());
 	}
+
+	private String getRaceDescriptor(GameCharacter owner) {
+
+	    // If owner is furry, there's no race
+	    if(owner.getFaceRace() != Race.HUMAN) {
+	        return "";
+	    }        
+
+	    // Feature extraction
+	    String skinColor = owner.getBody().getCoverings().get(BodyCoveringType.HUMAN).getPrimaryColour().getName();
+	    String hairColor = owner.getBody().getCoverings().get(owner.getHairCovering()).getPrimaryColour().getName();
+	    String eyeColor = owner.getBody().getCoverings().get(BodyCoveringType.EYE_HUMAN).getPrimaryColour().getName();
+	    int breastSize = owner.getBreastRawSizeValue();
+	    int hipSize = owner.getHipSize().getValue();
+	    int assSize = owner.getAssSize().getValue();
+	    int lipSize = owner.getLipSizeValue();
+	    String bodyPattern = owner.getBody().getCoveringPattern(BodyCoveringType.HUMAN, false).getName();
+
+	    boolean freckledFace = bodyPattern.equals("freckled (face)");
+	    boolean freckledBody = bodyPattern.equals("freckled");
+
+	    // Initialize scores
+	    java.util.Map<String, Double> raceScores = new java.util.HashMap<>();
+	    String[] races = new String[]{"scandinavian", "irish", "mediterranean", "arab", "slavic", "asian", "latina", "african"};
+	    for(String r : races) raceScores.put(r, 0.0);
+
+	    // Define weights (adjust as you see fit)
+	    double HAIR_WEIGHT = 3.0;
+	    double EYE_WEIGHT = 3.0;
+	    double SKIN_WEIGHT = 5.0;
+	    double FRECKLE_WEIGHT = 2.0;
+	    double SIZE_WEIGHT = 1.0;
+
+	    // Assign points based on table
+	    // Assumed integer mappings:
+	    // Breast size (UK Cups): AA=4, A=5, B=6, C=7, D=8, DD=9, E=10
+	    // Ass size: Flat=1, Tiny=2, Small=3, Round=4, Large=5, Huge=6
+	    // Hip size: Completely straight=1, Very narrow=2, Narrow=3, Girly=4, Womanly=5, Very Wide=6
+	    // Lip size: Thin=1, Average=2, Full=3, Plump=4
+	    
+		 // Feature -> (race -> P(race | feature))
+		 // i.e. given the feature (skin/hair/eye), these inner maps are the
+		 // approximate probability that the person belongs to each race.
+	
+		 // --- New maps (feature -> race probabilities)
+		 Map<String, Map<String, Double>> skinToRace = new HashMap<>();
+		 Map<String, Map<String, Double>> hairToRace = new HashMap<>();
+		 Map<String, Map<String, Double>> eyeToRace  = new HashMap<>();
+	
+		 // Freckle probability by race (approx, P(freckles | race))
+		 Map<String, Double> freckleProb = new HashMap<>();
+		 freckleProb.put("scandinavian", 0.25);
+		 freckleProb.put("irish", 0.40);          // higher: MC1R variants & freckles
+		 freckleProb.put("mediterranean", 0.06);
+		 freckleProb.put("arab", 0.05);
+		 freckleProb.put("slavic", 0.12);
+		 freckleProb.put("asian", 0.02);
+		 freckleProb.put("latina", 0.06);
+		 freckleProb.put("african", 0.01);
+	
+		 // Population factors (kept mostly as you had them; small tweaks ok)
+		 Map<String, Double> breastFactor = new HashMap<>();
+		 breastFactor.put("scandinavian", 1.10);
+		 breastFactor.put("irish", 1.05);
+		 breastFactor.put("mediterranean", 1.00);
+		 breastFactor.put("arab", 1.05);
+		 breastFactor.put("slavic", 1.05);
+		 breastFactor.put("asian", 0.90);
+		 breastFactor.put("latina", 1.10);
+		 breastFactor.put("african", 1.18);  // slight adjustment
+	
+		 Map<String, Double> buttockFactor = new HashMap<>();
+		 buttockFactor.put("scandinavian", 0.95);
+		 buttockFactor.put("irish", 0.95);
+		 buttockFactor.put("mediterranean", 1.00);
+		 buttockFactor.put("arab", 1.05);
+		 buttockFactor.put("slavic", 1.05);
+		 buttockFactor.put("asian", 0.85);
+		 buttockFactor.put("latina", 1.15);
+		 buttockFactor.put("african", 1.20);
+	
+		 // -----------------------
+		 // SKIN FEATURES -> RACE
+		 // -----------------------
+		 Map<String, Double> paleMap = new HashMap<>();
+		 paleMap.put("scandinavian", 0.45);
+		 paleMap.put("irish", 0.30);
+		 paleMap.put("slavic", 0.15);
+		 paleMap.put("mediterranean", 0.03);
+		 paleMap.put("arab", 0.02);
+		 paleMap.put("asian", 0.03);
+		 paleMap.put("latina", 0.01);
+		 paleMap.put("african", 0.01);
+		 skinToRace.put("pale", paleMap);
+	
+		 Map<String, Double> lightMap = new HashMap<>();
+		 lightMap.put("scandinavian", 0.30);
+		 lightMap.put("slavic", 0.25);
+		 lightMap.put("irish", 0.15);
+		 lightMap.put("asian", 0.15);
+		 lightMap.put("mediterranean", 0.08);
+		 lightMap.put("arab", 0.03);
+		 lightMap.put("latina", 0.02);
+		 lightMap.put("african", 0.02);
+		 skinToRace.put("light", lightMap);
+	
+		 Map<String, Double> porcelainMap = new HashMap<>();
+		 porcelainMap.put("scandinavian", 0.40);
+		 porcelainMap.put("irish", 0.30);
+		 porcelainMap.put("slavic", 0.20);
+		 porcelainMap.put("mediterranean", 0.05);
+		 porcelainMap.put("asian", 0.03);
+		 porcelainMap.put("arab", 0.01);
+		 porcelainMap.put("latina", 0.00);
+		 porcelainMap.put("african", 0.01);
+		 skinToRace.put("porcelain", porcelainMap);
+	
+		 Map<String, Double> rosyMap = new HashMap<>();
+		 rosyMap.put("scandinavian", 0.35);
+		 rosyMap.put("irish", 0.35);
+		 rosyMap.put("slavic", 0.20);
+		 rosyMap.put("mediterranean", 0.05);
+		 rosyMap.put("asian", 0.03);
+		 rosyMap.put("arab", 0.02);
+		 rosyMap.put("latina", 0.00);
+		 rosyMap.put("african", 0.00);
+		 skinToRace.put("rosy", rosyMap);
+	
+		 Map<String, Double> oliveMap = new HashMap<>();
+		 oliveMap.put("mediterranean", 0.45);
+		 oliveMap.put("arab", 0.25);
+		 oliveMap.put("latina", 0.15);
+		 oliveMap.put("slavic", 0.05);
+		 oliveMap.put("asian", 0.05);
+		 oliveMap.put("scandinavian", 0.02);
+		 oliveMap.put("irish", 0.02);
+		 oliveMap.put("african", 0.01);
+		 skinToRace.put("olive", oliveMap);
+	
+		 Map<String, Double> tannedMap = new HashMap<>();
+		 tannedMap.put("latina", 0.30);
+		 tannedMap.put("arab", 0.25);
+		 tannedMap.put("mediterranean", 0.25);
+		 tannedMap.put("asian", 0.10);
+		 tannedMap.put("slavic", 0.03);
+		 tannedMap.put("scandinavian", 0.02);
+		 tannedMap.put("irish", 0.02);
+		 tannedMap.put("african", 0.03);
+		 skinToRace.put("tanned", tannedMap);
+	
+		 Map<String, Double> darkMap = new HashMap<>();
+		 darkMap.put("african", 0.55);
+		 darkMap.put("latina", 0.25);
+		 darkMap.put("arab", 0.08);
+		 darkMap.put("mediterranean", 0.06);
+		 darkMap.put("asian", 0.03);
+		 darkMap.put("slavic", 0.02);
+		 darkMap.put("scandinavian", 0.01);
+		 darkMap.put("irish", 0.00);
+		 skinToRace.put("dark", darkMap);
+	
+		 Map<String, Double> chocolateMap = new HashMap<>();
+		 chocolateMap.put("african", 0.60);
+		 chocolateMap.put("latina", 0.25);
+		 chocolateMap.put("arab", 0.08);
+		 chocolateMap.put("mediterranean", 0.04);
+		 chocolateMap.put("asian", 0.02);
+		 chocolateMap.put("scandinavian", 0.00);
+		 chocolateMap.put("irish", 0.00);
+		 chocolateMap.put("slavic", 0.01);
+		 skinToRace.put("chocolate", chocolateMap);
+	
+		 Map<String, Double> ebonyMap = new HashMap<>();
+		 ebonyMap.put("african", 0.95);
+		 ebonyMap.put("latina", 0.03);
+		 ebonyMap.put("arab", 0.01);
+		 ebonyMap.put("mediterranean", 0.00);
+		 ebonyMap.put("asian", 0.00);
+		 ebonyMap.put("scandinavian", 0.00);
+		 ebonyMap.put("irish", 0.00);
+		 ebonyMap.put("slavic", 0.01);
+		 skinToRace.put("ebony", ebonyMap);
+	
+		 // -----------------------
+		 // HAIR FEATURES -> RACE
+		 // -----------------------
+		 //Map<String, Double> whiteHairMap = new HashMap<>(); // mostly age-related
+		 //whiteHairMap.put("scandinavian", 0.20);
+		 //whiteHairMap.put("irish", 0.20);
+		 //whiteHairMap.put("slavic", 0.20);
+		 //whiteHairMap.put("mediterranean", 0.15);
+		 //whiteHairMap.put("asian", 0.10);
+		 //whiteHairMap.put("arab", 0.05);
+		 //whiteHairMap.put("latina", 0.05);
+		 //whiteHairMap.put("african", 0.05);
+		 //hairToRace.put("white", whiteHairMap);
+	
+		 Map<String, Double> blondeMap = new HashMap<>();
+		 blondeMap.put("scandinavian", 0.60);
+		 blondeMap.put("slavic", 0.20);
+		 blondeMap.put("irish", 0.10);
+		 blondeMap.put("mediterranean", 0.05);
+		 blondeMap.put("latina", 0.03);
+		 blondeMap.put("asian", 0.01);
+		 blondeMap.put("arab", 0.00);
+		 blondeMap.put("african", 0.01);
+		 hairToRace.put("blonde", blondeMap);
+	
+		 Map<String, Double> dirtyBlondeMap = new HashMap<>();
+		 dirtyBlondeMap.put("scandinavian", 0.45);
+		 dirtyBlondeMap.put("slavic", 0.25);
+		 dirtyBlondeMap.put("irish", 0.15);
+		 dirtyBlondeMap.put("mediterranean", 0.10);
+		 dirtyBlondeMap.put("latina", 0.03);
+		 dirtyBlondeMap.put("asian", 0.01);
+		 dirtyBlondeMap.put("arab", 0.00);
+		 dirtyBlondeMap.put("african", 0.01);
+		 hairToRace.put("dirty blonde", dirtyBlondeMap);
+	
+		 Map<String, Double> sandyMap = new HashMap<>();
+		 sandyMap.put("scandinavian", 0.40);
+		 sandyMap.put("slavic", 0.25);
+		 sandyMap.put("irish", 0.15);
+		 sandyMap.put("mediterranean", 0.12);
+		 sandyMap.put("latina", 0.05);
+		 sandyMap.put("asian", 0.02);
+		 sandyMap.put("arab", 0.00);
+		 sandyMap.put("african", 0.01);
+		 hairToRace.put("sandy", sandyMap);
+	
+		 Map<String, Double> gingerMap = new HashMap<>();
+		 gingerMap.put("irish", 0.75);
+		 gingerMap.put("scandinavian", 0.10);
+		 gingerMap.put("slavic", 0.05);
+		 gingerMap.put("mediterranean", 0.03);
+		 gingerMap.put("latina", 0.03);
+		 gingerMap.put("asian", 0.01);
+		 gingerMap.put("arab", 0.01);
+		 gingerMap.put("african", 0.02);
+		 hairToRace.put("ginger", gingerMap);
+	
+		 Map<String, Double> lightBrownMap = new HashMap<>();
+		 lightBrownMap.put("slavic", 0.25);
+		 lightBrownMap.put("scandinavian", 0.20);
+		 lightBrownMap.put("mediterranean", 0.15);
+		 lightBrownMap.put("irish", 0.15);
+		 lightBrownMap.put("latina", 0.10);
+		 lightBrownMap.put("asian", 0.10);
+		 lightBrownMap.put("african", 0.03);
+		 lightBrownMap.put("arab", 0.02);
+		 hairToRace.put("light brown", lightBrownMap);
+	
+		 Map<String, Double> brownMap = new HashMap<>();
+		 brownMap.put("mediterranean", 0.35);
+		 brownMap.put("latina", 0.20);
+		 brownMap.put("slavic", 0.15);
+		 brownMap.put("arab", 0.10);
+		 brownMap.put("asian", 0.08);
+		 brownMap.put("scandinavian", 0.08);
+		 brownMap.put("african", 0.03);
+		 brownMap.put("irish", 0.01);
+		 hairToRace.put("brown", brownMap);
+	
+		 Map<String, Double> darkBrownMap = new HashMap<>();
+		 darkBrownMap.put("mediterranean", 0.30);
+		 darkBrownMap.put("arab", 0.25);
+		 darkBrownMap.put("latina", 0.20);
+		 darkBrownMap.put("slavic", 0.10);
+		 darkBrownMap.put("asian", 0.08);
+		 darkBrownMap.put("african", 0.05);
+		 darkBrownMap.put("scandinavian", 0.01);
+		 darkBrownMap.put("irish", 0.01);
+		 hairToRace.put("dark brown", darkBrownMap);
+	
+		 Map<String, Double> auburnMap = new HashMap<>();
+		 auburnMap.put("mediterranean", 0.25);
+		 auburnMap.put("irish", 0.25);
+		 auburnMap.put("slavic", 0.20);
+		 auburnMap.put("scandinavian", 0.15);
+		 auburnMap.put("latina", 0.10);
+		 auburnMap.put("asian", 0.03);
+		 auburnMap.put("african", 0.01);
+		 auburnMap.put("arab", 0.01);
+		 hairToRace.put("auburn", auburnMap);
+	
+		 Map<String, Double> greyMap = new HashMap<>();
+		 greyMap.put("scandinavian", 0.25);
+		 greyMap.put("slavic", 0.20);
+		 greyMap.put("irish", 0.20);
+		 greyMap.put("mediterranean", 0.15);
+		 greyMap.put("asian", 0.10);
+		 greyMap.put("latina", 0.05);
+		 greyMap.put("arab", 0.03);
+		 greyMap.put("african", 0.02);
+		 hairToRace.put("grey", greyMap);
+	
+		 Map<String, Double> blackMap = new HashMap<>();
+		 blackMap.put("african", 0.60);
+		 blackMap.put("asian", 0.25);
+		 blackMap.put("latina", 0.07);
+		 blackMap.put("arab", 0.05);
+		 blackMap.put("mediterranean", 0.02);
+		 blackMap.put("scandinavian", 0.01);
+		 blackMap.put("irish", 0.00);
+		 blackMap.put("slavic", 0.00);
+		 hairToRace.put("black", blackMap);
+	
+		 Map<String, Double> pitchBlackMap = new HashMap<>();
+		 pitchBlackMap.put("african", 0.70);
+		 pitchBlackMap.put("asian", 0.20);
+		 pitchBlackMap.put("arab", 0.05);
+		 pitchBlackMap.put("latina", 0.03);
+		 pitchBlackMap.put("mediterranean", 0.01);
+		 pitchBlackMap.put("scandinavian", 0.00);
+		 pitchBlackMap.put("irish", 0.00);
+		 pitchBlackMap.put("slavic", 0.00);
+		 hairToRace.put("pitch black", pitchBlackMap);
+	
+		 // -----------------------
+		 // EYE FEATURES -> RACE
+		 // -----------------------
+		 Map<String, Double> brownEyeMap = new HashMap<>();
+		 brownEyeMap.put("asian", 0.45);
+		 brownEyeMap.put("latina", 0.15);
+		 brownEyeMap.put("african", 0.15);
+		 brownEyeMap.put("mediterranean", 0.10);
+		 brownEyeMap.put("arab", 0.08);
+		 brownEyeMap.put("slavic", 0.04);
+		 brownEyeMap.put("scandinavian", 0.02);
+		 brownEyeMap.put("irish", 0.01);
+		 eyeToRace.put("brown", brownEyeMap);
+	
+		 Map<String, Double> amberMap = new HashMap<>();
+		 amberMap.put("mediterranean", 0.25);
+		 amberMap.put("arab", 0.25);
+		 amberMap.put("latina", 0.20);
+		 amberMap.put("african", 0.10);
+		 amberMap.put("slavic", 0.10);
+		 amberMap.put("scandinavian", 0.05);
+		 amberMap.put("asian", 0.03);
+		 amberMap.put("irish", 0.02);
+		 eyeToRace.put("amber", amberMap);
+	
+		 Map<String, Double> hazelMap = new HashMap<>();
+		 hazelMap.put("mediterranean", 0.25);
+		 hazelMap.put("slavic", 0.20);
+		 hazelMap.put("irish", 0.15);
+		 hazelMap.put("latina", 0.15);
+		 hazelMap.put("scandinavian", 0.10);
+		 hazelMap.put("asian", 0.08);
+		 hazelMap.put("african", 0.04);
+		 hazelMap.put("arab", 0.03);
+		 eyeToRace.put("hazel", hazelMap);
+	
+		 Map<String, Double> darkBlueMap = new HashMap<>();
+		 darkBlueMap.put("scandinavian", 0.40);
+		 darkBlueMap.put("slavic", 0.25);
+		 darkBlueMap.put("irish", 0.20);
+		 darkBlueMap.put("mediterranean", 0.05);
+		 darkBlueMap.put("latina", 0.03);
+		 darkBlueMap.put("asian", 0.03);
+		 darkBlueMap.put("arab", 0.02);
+		 darkBlueMap.put("african", 0.02);
+		 eyeToRace.put("dark blue", darkBlueMap);
+	
+		 Map<String, Double> blueMap = new HashMap<>();
+		 blueMap.put("scandinavian", 0.55);
+		 blueMap.put("slavic", 0.20);
+		 blueMap.put("irish", 0.15);
+		 blueMap.put("mediterranean", 0.05);
+		 blueMap.put("latina", 0.03);
+		 blueMap.put("asian", 0.01);
+		 blueMap.put("arab", 0.00);
+		 blueMap.put("african", 0.01);
+		 eyeToRace.put("blue", blueMap);
+	
+		 Map<String, Double> lightBlueMap = new HashMap<>();
+		 lightBlueMap.put("scandinavian", 0.60);
+		 lightBlueMap.put("slavic", 0.25);
+		 lightBlueMap.put("irish", 0.10);
+		 lightBlueMap.put("mediterranean", 0.03);
+		 lightBlueMap.put("latina", 0.01);
+		 lightBlueMap.put("asian", 0.00);
+		 lightBlueMap.put("arab", 0.00);
+		 lightBlueMap.put("african", 0.01);
+		 eyeToRace.put("light blue", lightBlueMap);
+	
+		 Map<String, Double> aquaMap = new HashMap<>();
+		 aquaMap.put("scandinavian", 0.50);
+		 aquaMap.put("slavic", 0.25);
+		 aquaMap.put("irish", 0.15);
+		 aquaMap.put("mediterranean", 0.05);
+		 aquaMap.put("latina", 0.03);
+		 aquaMap.put("asian", 0.01);
+		 aquaMap.put("arab", 0.00);
+		 aquaMap.put("african", 0.01);
+		 eyeToRace.put("aqua", aquaMap);
+	
+		 Map<String, Double> greenMap = new HashMap<>();
+		 greenMap.put("irish", 0.40);
+		 greenMap.put("scandinavian", 0.25);
+		 greenMap.put("slavic", 0.20);
+		 greenMap.put("mediterranean", 0.05);
+		 greenMap.put("latina", 0.04);
+		 greenMap.put("asian", 0.03);
+		 greenMap.put("african", 0.02);
+		 greenMap.put("arab", 0.01);
+		 eyeToRace.put("green", greenMap);
+	
+		 Map<String, Double> greygreenMap = new HashMap<>();
+		 greygreenMap.put("scandinavian", 0.40);
+		 greygreenMap.put("slavic", 0.25);
+		 greygreenMap.put("irish", 0.20);
+		 greygreenMap.put("mediterranean", 0.10);
+		 greygreenMap.put("latina", 0.03);
+		 greygreenMap.put("asian", 0.01);
+		 greygreenMap.put("arab", 0.00);
+		 greygreenMap.put("african", 0.01);
+		 eyeToRace.put("grey-green", greygreenMap);
+	
+		 Map<String, Double> greyEyeMap = new HashMap<>();
+		 greyEyeMap.put("scandinavian", 0.35);
+		 greyEyeMap.put("slavic", 0.25);
+		 greyEyeMap.put("irish", 0.20);
+		 greyEyeMap.put("mediterranean", 0.10);
+		 greyEyeMap.put("asian", 0.05);
+		 greyEyeMap.put("latina", 0.03);
+		 greyEyeMap.put("arab", 0.01);
+		 greyEyeMap.put("african", 0.01);
+		 eyeToRace.put("grey", greyEyeMap);
+
+
+	
+	     // Helper: safe-get from nested maps
+	     BiFunction<Map<String, Map<String, Double>>, String, Map<String, Double>> safeGetNested =
+	         (outer, key) -> outer.getOrDefault(key, new HashMap<>());
+	         
+         Map<String, Double> skinMap = skinToRace.getOrDefault(skinColor, new HashMap<>());
+         Map<String, Double> hairMap = hairToRace.getOrDefault(hairColor, new HashMap<>());
+         Map<String, Double> eyeMap  = eyeToRace.getOrDefault(eyeColor,  new HashMap<>());
+	
+         for (String race : races) {
+    	    double delta = 0.0;
+
+    	    delta += skinMap.getOrDefault(race, 0.0) * SKIN_WEIGHT;
+    	    delta += hairMap.getOrDefault(race, 0.0) * HAIR_WEIGHT;
+    	    delta += eyeMap.getOrDefault(race, 0.0) * EYE_WEIGHT;
+	
+	         // 2) freckles
+	         double baseFreckleProb = freckleProb.getOrDefault(race, 0.02);
+	         if (freckledFace) {
+	             delta += Math.min(1.0, baseFreckleProb + 0.3) * FRECKLE_WEIGHT;
+	         }
+	         if (freckledBody) {
+	             delta += Math.min(1.0, baseFreckleProb + 0.5) * FRECKLE_WEIGHT * 1.5;
+	         }
+	
+	         // 3) body-size features
+	         double normalizedBreast = (Math.max(4, Math.min(breastSize, 11)) - 4) / 7.0;
+	         Double raceBreastFactor = breastFactor.get(race);
+	         if (raceBreastFactor != null) {
+	             delta += normalizedBreast * raceBreastFactor * SIZE_WEIGHT * 0.8;
+	         }
+	
+	         double normalizedHip = (Math.max(1, Math.min(hipSize, 6)) - 1) / 5.0;
+	         double normalizedAss = (Math.max(1, Math.min(assSize, 5)) - 1) / 4.0;
+	         Double raceButtFactor = buttockFactor.get(race);
+	         if (raceButtFactor != null) {
+	             delta += normalizedHip * 0.6 * raceButtFactor * SIZE_WEIGHT;
+	             delta += normalizedAss * 0.8 * raceButtFactor * SIZE_WEIGHT;
+	         }
+	
+	         double normalizedLip = (Math.max(1, Math.min(lipSize, 4)) - 1) / 3.0;
+	         delta += normalizedLip * (SIZE_WEIGHT * 0.35);
+	
+	         raceScores.put(race, raceScores.getOrDefault(race, 0.0) + delta);
+	     }
+	
+      // --- Normalize race scores and build description ---
+         List<Map.Entry<String, Double>> sortedScores = new ArrayList<>(raceScores.entrySet());
+         sortedScores.sort((a, b) -> Double.compare(b.getValue(), a.getValue())); // highest first
+
+         StringBuilder sb = new StringBuilder("");
+
+         double totalScore = raceScores.values().stream().mapToDouble(Double::doubleValue).sum();
+         if (sortedScores.isEmpty() || totalScore <= 0.0) {
+             sb.append(owner.isPlayer()
+                 ? "Your features do not clearly resemble any ancestry."
+                 : "[npc.Her] features do not clearly resemble any ancestry.");
+         } else {
+             String topRace = sortedScores.get(0).getKey();
+             double topScore = sortedScores.get(0).getValue();
+
+             String secondRace = sortedScores.size() > 1 ? sortedScores.get(1).getKey() : "";
+             double secondScore = sortedScores.size() > 1 ? sortedScores.get(1).getValue() : 0.0;
+
+             String thirdRace = sortedScores.size() > 2 ? sortedScores.get(2).getKey() : "";
+             double thirdScore = sortedScores.size() > 2 ? sortedScores.get(2).getValue() : 0.0;
+
+             // Measure how much stronger top is compared to the others
+             double topVsSecond = (topScore - secondScore) / Math.max(0.01, topScore);
+             double secondVsThird = (secondScore - thirdScore) / Math.max(0.01, secondScore);
+
+             if (topVsSecond > 0.3) {
+                 // Clear dominant
+                 sb.append(owner.isPlayer()
+                     ? "Your features strongly indicate a <span style='color:" 
+                         + getRaceColour(topRace) + ";'>" + topRace + "</span> ancestry."
+                     : "[npc.Her] features strongly suggest <span style='color:" 
+                         + getRaceColour(topRace) + ";'>" + topRace + "</span> heritage.");
+             } else if (secondVsThird > 0.1 || sortedScores.size() < 3) {
+                 // Only two races stand out
+                 sb.append(owner.isPlayer()
+                     ? "You have a mix of <span style='color:" + getRaceColour(topRace) + ";'>" 
+                         + topRace + "</span> and <span style='color:" + getRaceColour(secondRace) + ";'>" 
+                         + secondRace + "</span> features."
+                     : "[npc.Her] shows traits of both <span style='color:" + getRaceColour(topRace) + ";'>" 
+                         + topRace + "</span> and <span style='color:" + getRaceColour(secondRace) + ";'>" 
+                         + secondRace + "</span> ancestry.");
+             } else if (!thirdRace.isEmpty()) {
+                 // Three are close together
+                 sb.append(owner.isPlayer()
+                     ? "Your features show a blend of <span style='color:" + getRaceColour(topRace) + ";'>" 
+                         + topRace + "</span>, <span style='color:" + getRaceColour(secondRace) + ";'>" 
+                         + secondRace + "</span>, and <span style='color:" + getRaceColour(thirdRace) + ";'>" 
+                         + thirdRace + "</span> ancestries."
+                     : "[npc.Her] features reveal a mix of <span style='color:" + getRaceColour(topRace) + ";'>" 
+                         + topRace + "</span>, <span style='color:" + getRaceColour(secondRace) + ";'>" 
+                         + secondRace + "</span>, and <span style='color:" + getRaceColour(thirdRace) + ";'>" 
+                         + thirdRace + "</span> heritage.");
+             } else {
+                 // Too even / too many races -> fallback
+                 sb.append(owner.isPlayer()
+                     ? "Your facial features suggest a diverse mix of ancestries."
+                     : "[npc.Her] facial traits suggest a diverse ancestry.");
+             }
+         }
+
+	    String debug = "<br><br>DEBUG:"
+	    		+ "<br>Skin Color: " + skinColor
+	    	    + "<br>Hair Color: " + hairColor
+	    	    + "<br>Eye Color: " + eyeColor
+	    	    + "<br>Breast Size: " + breastSize
+	    	    + "<br>Ass Size: " + assSize
+	    	    + "<br>Lip Size: " + lipSize
+	    	    + "<br>Freckled Face: " + freckledFace
+	    	    + "<br>Freckled Body: " + freckledBody;
+	    
+	    StringBuilder raceDebug = new StringBuilder(System.lineSeparator() + "<br><br>RACE SCORES:" + System.lineSeparator());
+	    for(String r : races) {
+	        raceDebug.append(r)
+	                 .append(": ")
+	                 .append(raceScores.get(r))
+	                 .append("<br>");
+	    }
+	    
+	    return sb + "";
+	}
+	
+	private String getRaceColour(String race) {
+	    Colour raceColour;
+	    switch(race.toLowerCase()) {
+	        case "scandinavian": raceColour = PresetColour.RACE_SCANDINAVIAN; break;
+	        case "irish": raceColour = PresetColour.RACE_IRISH; break;
+	        case "mediterranean": raceColour = PresetColour.RACE_MEDITERRANEAN; break;
+	        case "arab": raceColour = PresetColour.RACE_ARAB; break;
+	        case "slavic": raceColour = PresetColour.RACE_SLAVIC; break;
+	        case "asian": raceColour = PresetColour.RACE_ASIAN; break;
+	        case "latina": raceColour = PresetColour.RACE_LATINA; break;
+	        case "african": raceColour = PresetColour.RACE_AFRICAN; break;
+	        default: raceColour = PresetColour.BASE_GREY; break;
+	    }
+	    return raceColour.toWebHexString();
+	}
+
 
 	private void addRaceWeight(Map<AbstractRace, Integer> raceWeightMap, AbstractRace race, int weight) {
 		if(race!=null && race!=Race.NONE) {

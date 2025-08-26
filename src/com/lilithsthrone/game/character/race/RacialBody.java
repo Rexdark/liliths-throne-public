@@ -376,7 +376,7 @@ public class RacialBody {
 			CupSize.B, 1, Lactation.ZERO_NONE, Capacity.ZERO_IMPENETRABLE, OrificeDepth.TWO_AVERAGE, OrificeElasticity.THREE_FLEXIBLE, OrificePlasticity.THREE_RESILIENT,
 				NippleSize.TWO_BIG, NippleShape.NORMAL, AreolaeSize.TWO_BIG, 1,
 			195, 10, BodySize.THREE_LARGE.getMedianValue(), Muscle.FOUR_RIPPED.getMedianValue(),
-			180, 70, BodySize.THREE_LARGE.getMedianValue(), Muscle.THREE_MUSCULAR.getMedianValue(),
+			180, 70, BodySize.TWO_AVERAGE.getMedianValue(), Muscle.THREE_MUSCULAR.getMedianValue(),
 			EarType.HORSE_MORPH,
 			EyeType.HORSE_MORPH,
 			FaceType.HORSE_MORPH, LipSize.ONE_AVERAGE, LipSize.TWO_FULL,

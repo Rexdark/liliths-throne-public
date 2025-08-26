@@ -492,6 +492,18 @@ public class PresetColour {
 	public static Colour CLOTHING_ROSE_GOLD = new Colour(true, BaseColour.ROSE_GOLD, "rose gold") {};
 	public static Colour CLOTHING_PLATINUM = new Colour(true, BaseColour.PLATINUM, "platinum") {};
 	
+	//Race Heritage Colors
+	public static Colour RACE_SCANDINAVIAN = new Colour(true, Util.newColour(0xF0EDEE), Util.newColour(0xF0EDEE), "scandinavian pale skin"); // pale porcelain tones
+	public static Colour RACE_IRISH = new Colour(true, Util.newColour(0xD9C3A6), Util.newColour(0xD9C3A6), "irish fair skin"); // light rosy/beige
+	public static Colour RACE_MEDITERRANEAN = new Colour(true, Util.newColour(0xC68642), Util.newColour(0xC68642), "mediterranean olive"); // olive tan
+	public static Colour RACE_ARAB = new Colour(true, Util.newColour(0xD2B48C), Util.newColour(0xD2B48C), "arab light tan"); // sand beige/light brown
+	public static Colour RACE_ASIAN = new Colour(true, Util.newColour(0xF5DEB3), Util.newColour(0xF5DEB3), "asian light skin"); // pale-yellow undertones
+	public static Colour RACE_LATINA = new Colour(true, Util.newColour(0xA9746E), Util.newColour(0xA9746E), "latina warm bronze"); // warm bronze tone
+	public static Colour RACE_SLAVIC = new Colour(true, Util.newColour(0xFFE4C4), Util.newColour(0xFFE4C4), "slavic fair skin"); // fair/light pink undertones
+	public static Colour RACE_AFRICAN = new Colour(true, Util.newColour(0x4B3621), Util.newColour(0x4B3621), "african deep brown"); // rich chocolate brown
+	public static Colour RACE_MIDDLE_EASTERN = new Colour(true, Util.newColour(0xE0C097), Util.newColour(0xE0C097), "middle eastern warm beige"); // warm tan
+	public static Colour RACE_NATIVE_AMERICAN = new Colour(true, Util.newColour(0x8B5A2B), Util.newColour(0x8B5A2B), "native american deep ochre"); // earthy brown
+
 	
 	// Body parts:
 
