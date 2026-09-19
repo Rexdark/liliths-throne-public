@@ -153,9 +153,30 @@ public class SlaveForSale extends NPC {
 	public boolean isUnique() {
 		return false;
 	}
+
+	@Override
+	public void setStartingPersona(boolean setPersonality, boolean setFetishes, boolean setOrientation, boolean setHistory, boolean setSpells) {
+		if(setPersonality) {
+		}
+		
+		if(setFetishes) {
+		}
+		
+		if(setOrientation) {
+		}
+
+		if(setHistory) {
+		}
+		
+		if(setSpells) {
+		}
+	}
 	
 	@Override
 	public void setStartingBody(boolean setPersona) {
+		if(setPersona) {
+			setStartingPersona();
+		}
 	}
 	
 	@Override
@@ -183,7 +204,7 @@ public class SlaveForSale extends NPC {
 			return super.getDescription();
 		}
 		if(this.isSlave()) {
-			return UtilText.parse(this, "For one reason or another, [npc.sheIs] now a slave, and is no more than [npc.her] owner's property.");
+			return UtilText.parse(this, "For one reason or another, [npc.nameIsFull] a slave, and is no more than [npc.her] owner's property.");
 			
 		} else {
 			return UtilText.parse(this, "After a period of being your slave, [npc.nameIsFull] now your trusted friend.");

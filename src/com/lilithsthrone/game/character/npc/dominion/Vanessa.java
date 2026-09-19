@@ -33,6 +33,7 @@ import com.lilithsthrone.game.character.body.valueEnums.OrificeElasticity;
 import com.lilithsthrone.game.character.body.valueEnums.OrificePlasticity;
 import com.lilithsthrone.game.character.body.valueEnums.TongueLength;
 import com.lilithsthrone.game.character.body.valueEnums.Wetness;
+import com.lilithsthrone.game.character.effects.Perk;
 import com.lilithsthrone.game.character.effects.PerkCategory;
 import com.lilithsthrone.game.character.effects.PerkManager;
 import com.lilithsthrone.game.character.fetishes.Fetish;
@@ -108,10 +109,15 @@ public class Vanessa extends NPC {
 			this.setHairCovering(new Covering(BodyCoveringType.BODY_HAIR_HUMAN, PresetColour.COVERING_GREY), false);
 			this.setHairCovering(new Covering(BodyCoveringType.BODY_HAIR_FOX_FUR, PresetColour.COVERING_GREY), false);
 		}
+		if(Main.isVersionOlderThan(Game.loadingVersion, "0.4.11.3")) {
+			this.addSpecialPerk(Perk.SPECIAL_SHORT_SIGHTED);
+		}
 	}
 
 	@Override
 	public void setupPerks(boolean autoSelectPerks) {
+		this.addSpecialPerk(Perk.SPECIAL_SHORT_SIGHTED);
+		
 		this.setAttribute(Attribute.MAJOR_CORRUPTION, 15);
 		
 		PerkManager.initialisePerks(this,
@@ -123,17 +129,15 @@ public class Vanessa extends NPC {
 	}
 
 	@Override
-	public void setStartingBody(boolean setPersona) {
-		// Persona:
-
-		if(setPersona) {
+	public void setStartingPersona(boolean setPersonality, boolean setFetishes, boolean setOrientation, boolean setHistory, boolean setSpells) {
+		if(setPersonality) {
 			this.setPersonalityTraits(
 					PersonalityTrait.KIND);
-			
-			this.setSexualOrientation(SexualOrientation.AMBIPHILIC);
-	
-			this.setHistory(Occupation.NPC_OFFICE_WORKER);
-			
+		}
+		
+		if(setFetishes) {
+			this.clearFetishDesires();
+			this.clearFetishes();
 			this.addFetish(Fetish.FETISH_FOOT_GIVING);
 			this.addFetish(Fetish.FETISH_ORAL_RECEIVING);
 			
@@ -143,6 +147,23 @@ public class Vanessa extends NPC {
 			this.setFetishDesire(Fetish.FETISH_MASOCHIST, FetishDesire.ZERO_HATE);
 		}
 		
+		if(setOrientation) {
+			this.setSexualOrientation(SexualOrientation.AMBIPHILIC);
+		}
+
+		if(setHistory) {
+			this.setHistory(Occupation.NPC_OFFICE_WORKER);
+		}
+		
+		if(setSpells) {
+		}
+	}
+	
+	@Override
+	public void setStartingBody(boolean setPersona) {
+		if(setPersona) {
+			setStartingPersona();
+		}
 		
 		// Body:
 

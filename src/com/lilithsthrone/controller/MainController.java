@@ -444,7 +444,7 @@ public class MainController implements Initializable {
 	 * Sets up buttons and hotkeys.
 	 */
 	public List<KeyCode> buttonsPressed = new ArrayList<>();
-
+	
 	private void setUpButtons() {
 		// HOTKEYS:
 		actionKeyPressed = new EventHandler<KeyEvent>() {
@@ -511,8 +511,59 @@ public class MainController implements Initializable {
 						System.arraycopy(lastKeys, 0, lastKeys, 1, 4);
 						lastKeys[0] = event.getCode();
 						checkLastKeys();
+
+//						if(event.getCode()==KeyCode.HOME && Main.DEBUG){
+//							((Shiranui)Main.game.getNpc(Shiranui.class)).setBodyToMeraxis(((Shiranui)Main.game.getNpc(Shiranui.class)).getSubspecies()==Subspecies.FOX_ASCENDANT);
+//							Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+//						}
 						
 						if(event.getCode()==KeyCode.END && Main.DEBUG){
+//							System.out.println(UtilText.parse(Util.newArrayListOfValues(null, null), "hello [npc.name]"));
+							
+//							Main.game.getNpc(Shiranui.class).setLocation(Main.game.getPlayerCell());
+//							Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+							
+//							private static List<AbstractSubspecies> subspeciesToDrawFrom;
+//							if(subspeciesToDrawFrom==null) {
+//								subspeciesToDrawFrom = new ArrayList<>(Subspecies.getAllSubspecies());
+//							}
+//							if(!subspeciesToDrawFrom.isEmpty()) {
+//								AbstractSubspecies sub = subspeciesToDrawFrom.get(0);
+//								subspeciesToDrawFrom.remove(0);
+//								
+//								Main.game.getDialogueFlags().setObject("potionSubspecies", sub);
+//								System.out.println("Set subspecies: "+sub.getName(null));
+//							}
+//							Main.game.getPlayer().setBodyUsingSubspeciesPreference(Gender.F_P_V_B_FUTANARI, Subspecies.HUMAN);
+//
+//							Main.game.appendToTextEndStringBuilder(Main.game.getPlayer().useItem(Main.game.getItemGen().generateItem("innoxia_potions_youko_potion"), Main.game.getPlayer(), false, true));
+//							Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode() ) {
+//								@Override
+//								public boolean isStripContent() {
+//									return true;
+//								}
+//							});
+							
+//							for(AbstractSubspecies subspecies : Subspecies.getAllSubspecies()) {
+//								System.out.println("################################");
+//								System.out.println(subspecies.getName(null));
+//								try {
+//									NPC npc = new GenericSexualPartner();
+//									npc.setBody(Gender.F_V_B_FEMALE, subspecies, RaceStage.GREATER, true);
+//									Main.game.addNPC(npc, false);
+//								} catch (Exception e) {
+//									e.printStackTrace();
+//								}
+//								try {
+//									NPC npc = new GenericSexualPartner();
+//									npc.setBody(Gender.M_P_MALE, subspecies, RaceStage.GREATER, true);
+//									Main.game.addNPC(npc, false);
+//								} catch (Exception e) {
+//									e.printStackTrace();
+//								}
+//							}
+							
+//							System.out.println("null	null	true	null hello	null	nullify	null false".replaceAll("(?<=\\s|^)(null|true|false)(?=\\s|$)", ""));
 							
 //							RandomEnchantment.initAllRandomEnchantments();
 //							for(RandomEnchantment enchantment : RandomEnchantment.getAllNegativeClothingEnchantments()) {
@@ -1727,9 +1778,17 @@ public class MainController implements Initializable {
 			DebugController.initSpawnSetListeners();
 		} else if (currentNode.equals(DebugDialogue.OUTFIT_VIEWER)) {
 			DebugController.initApplyOutfitListeners();
+		} else if(currentNode.equals(DebugDialogue.RANDOM_ENCHANTMENT_CLOTHING)) {
+			DebugController.initApplyRandomClothingEnchantmentListeners();
+		} else if(currentNode.equals(DebugDialogue.RANDOM_ENCHANTMENT_POTIONS)) {
+			DebugController.initApplyRandomPotionEnchantmentListeners();
+		} else if (currentNode.equals(DebugDialogue.ENCOUNTER_MENU)) {
+			DebugController.initEncounterListeners();
 		} else if (currentNode.equals(ElementalDialogue.ELEMENTAL_FETISHES)
 				|| currentNode.equals(PhoneDialogue.CHARACTER_FETISHES)) {
 			MiscController.initFetishListeners();
+		} else if(currentNode.equals(PhoneDialogue.RACES)) {
+			MiscController.initEncyclopediaRaceListeners();
 		} else if (currentNode.equals(EnchantmentDialogue.ENCHANTMENT_MENU)) {
 			EnchantmentController.initEnchantmentMenuListeners();
 		} else if (currentNode.equals(EnchantmentDialogue.ENCHANTMENT_SAVE_LOAD)) {
@@ -2138,18 +2197,6 @@ public class MainController implements Initializable {
 					+" Your limit is calculated from: <i>10 + (level) + (perk gains)</i>");
 			addEventListener(documentAttributes, id, "mouseenter", el2, false);
 		}
-		
-		id = "INVENTORY_ENCHANTMENT_LIMIT_NPC";
-		if (((EventTarget) documentAttributes.getElementById(id)) != null) {
-			addEventListener(documentAttributes, id, "mousemove", moveTooltipListener, false);
-			addEventListener(documentAttributes, id, "mouseleave", hideTooltipListener, false);
-			TooltipInformationEventListener el2 = new TooltipInformationEventListener().setInformation(
-					Util.capitaliseSentence(Attribute.ENCHANTMENT_LIMIT.getName()),
-					UtilText.parse(RenderingEngine.getCharacterToRender(),
-							"The total amount of weapon, clothing, and tattoo attribute enchantments you're able to handle without incurring massive penalties."
-								+" [npc.Her] maximum is calculated from: <i>10 + (level) + (perk gains)</i>"));
-			addEventListener(documentAttributes, id, "mouseenter", el2, false);
-		}
 
 		boolean dateKnown = Main.game.getDialogueFlags().hasFlag(DialogueFlagValue.knowsDate) || !Main.game.isInNewWorld();
 		
@@ -2443,7 +2490,7 @@ public class MainController implements Initializable {
 					addEventListener(documentAttributes, "FETISH_"+idModifier + Fetish.getIdFromFetish(f), "mousemove", moveTooltipListener, false);
 					addEventListener(documentAttributes, "FETISH_"+idModifier + Fetish.getIdFromFetish(f), "mouseleave", hideTooltipListener, false);
 
-					TooltipInformationEventListener el = new TooltipInformationEventListener().setFetish(f, character);
+					TooltipInformationEventListener el = new TooltipInformationEventListener().setFetish(f, character, false);
 					addEventListener(documentAttributes, "FETISH_"+idModifier + Fetish.getIdFromFetish(f), "mouseenter", el, false);
 				}
 			}
@@ -2552,6 +2599,18 @@ public class MainController implements Initializable {
 						?"Switch to tattoos"
 						:"Switch to clothing",
 					"");
+			addEventListener(documentRight, id, "mouseenter", el2, false);
+		}
+		
+		id = "INVENTORY_ENCHANTMENT_LIMIT_NPC";
+		if (((EventTarget) documentRight.getElementById(id)) != null) {
+			addEventListener(documentRight, id, "mousemove", moveTooltipListener, false);
+			addEventListener(documentRight, id, "mouseleave", hideTooltipListener, false);
+			TooltipInformationEventListener el2 = new TooltipInformationEventListener().setInformation(
+					Util.capitaliseSentence(Attribute.ENCHANTMENT_LIMIT.getName()),
+					UtilText.parse(RenderingEngine.getCharacterToRender(),
+							"The total amount of weapon, clothing, and tattoo attribute enchantments [npc.nameIsFull] able to handle without incurring massive penalties."
+								+" [npc.Her] maximum is calculated from: <i>10 + (level) + (perk gains)</i>"));
 			addEventListener(documentRight, id, "mouseenter", el2, false);
 		}
 		
@@ -2806,7 +2865,7 @@ public class MainController implements Initializable {
 						addEventListener(documentRight, "FETISH_NPC_"+idModifier + Fetish.getIdFromFetish(f), "mousemove", moveTooltipListener, false);
 						addEventListener(documentRight, "FETISH_NPC_"+idModifier + Fetish.getIdFromFetish(f), "mouseleave", hideTooltipListener, false);
 	
-						TooltipInformationEventListener el = new TooltipInformationEventListener().setFetish(f, character);
+						TooltipInformationEventListener el = new TooltipInformationEventListener().setFetish(f, character, false);
 						addEventListener(documentRight, "FETISH_NPC_"+idModifier + Fetish.getIdFromFetish(f), "mouseenter", el, false);
 					}
 				}

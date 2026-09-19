@@ -68,7 +68,7 @@ import com.lilithsthrone.world.places.PlaceType;
 
 /**
  * @since 0.1.69
- * @version 0.3.7
+ * @version 0.4.11.1
  * @author Innoxia
  */
 public class GenericOrgasms {
@@ -112,13 +112,17 @@ public class GenericOrgasms {
 
 	public static boolean isCumTargetRequirementsMet(SexActionInterface sexAction, OrgasmCumTarget cumTarget) {
 		OrgasmCumTarget preferredPulloutTarget = Main.sex.getInitialSexManager().getCharacterPullOutOrgasmCumTarget(Main.sex.getCharacterPerformingAction(), Main.sex.getTargetedPartner(Main.sex.getCharacterPerformingAction()));
+		SexAreaOrifice penisPenetratingArea = Main.sex.getFirstOngoingSexAreaOrifice(Main.sex.getCharacterPerformingAction(), SexAreaPenetration.PENIS);
+		boolean isPenetratingInternalOrifice = penisPenetratingArea!=null && penisPenetratingArea.isInternalOrifice();
 		
 		if(!Main.sex.getAvailableCumTargets(Main.sex.getCharacterPerformingAction()).contains(cumTarget)
 				|| (Main.sex.getSexPositionSlot(Main.sex.getCharacterPerformingAction())==SexSlotGeneric.MISC_WATCHING && cumTarget.isRequiresPartner())
 				|| !Main.sex.getCharacterPerformingAction().hasPenisIgnoreDildo()
 				|| !Main.sex.getCharacterPerformingAction().isCoverableAreaExposed(CoverableArea.PENIS)
+				// If the character is wearing a condom, then they will always creampie if penetrating an orifice, otherwise allow them to choose an area to cum onto if their condom breaks:
 				|| (Main.sex.getCharacterPerformingAction().isWearingCondom()
-						&& sexAction.getCondomFailure(Main.sex.getCharacterPerformingAction(), Main.sex.getTargetedPartner(Main.sex.getCharacterPerformingAction()))==CondomFailure.NONE)
+						&& (sexAction.getCondomFailure(Main.sex.getCharacterPerformingAction(), Main.sex.getTargetedPartner(Main.sex.getCharacterPerformingAction()))==CondomFailure.NONE
+							|| isPenetratingInternalOrifice))
 				|| (!Main.sex.getCharacterPerformingAction().isPlayer() && Main.sex.getRequestedPulloutWeighting(Main.sex.getCharacterPerformingAction())<0)
 				|| (preferredPulloutTarget!=null && preferredPulloutTarget!=cumTarget)) {
 			return false;
@@ -1117,7 +1121,7 @@ public class GenericOrgasms {
 								switch(mod) {
 									case BARBED:
 										if(!immobile && characterOrgasming.hasPenisModifier(mod)) {
-											modifiers.add(" [npc.Name] continues to make small, thrusting movements, raking [npc.her] barbs back against the lining of [npc2.namePos] throat"
+											modifiers.add(" [npc.Name] [npc.verb(continue)] to make small, thrusting movements, raking [npc.her] barbs back against the lining of [npc2.namePos] throat"
 													+ (immobileTarget?".":" and causing [npc2.herHim] to let out a choking [npc2.moan]."));
 										}
 										break;
@@ -1804,7 +1808,6 @@ public class GenericOrgasms {
 			case GROIN:
 			case INSIDE:
 			case INSIDE_SWITCH_DOUBLE:
-				target = Main.sex.getTargetedPartner(characterOrgasming);
 				// Use this GROIN section only if the INSIDE or INSIDE_SWITCH_DOUBLE is a frotting event
 				boolean isFrotting = false;
 				if(targetArea==OrgasmCumTarget.INSIDE || targetArea==OrgasmCumTarget.INSIDE_SWITCH_DOUBLE) {
@@ -1812,6 +1815,9 @@ public class GenericOrgasms {
 						break;
 					}
 					isFrotting = true;
+				}
+				if(!isFrotting) { // If it's not frotting, set the target to the GROIN target, otherwise, keep it as-is as it will already be accounting for ongoing PENIS actions to make sure the target is the one being cummed inside of
+					target = Main.sex.getTargetedPartner(characterOrgasming);
 				}
 				if (!targetAreaClothingCummedOn.isEmpty()) {
 					return getClothingCummedOnText(characterOrgasming, target, areasCummedOn, targetAreaClothingCummedOn);
@@ -3151,7 +3157,7 @@ public class GenericOrgasms {
 									" As [npc2.namePos] face is right in front of [npc.namePos] [npc.pussy+], [npc.namePos] fluids squirt out both into [npc2.her] mouth, as well as all over [npc2.her] [npc2.face]."));
 						} else {
 							genericOrgasmSB.append(UtilText.parse(characterOrgasming, character,
-									" As [npc2.nameIsFull] eating [npc.herHim] out, [npc.namePos] fluids squirt out both into [npc2.her] mouth, as well as all over [npc2.her] [npc2.face]."));
+									" As [npc2.nameIs] eating [npc.herHim] out, [npc.namePos] fluids squirt out both into [npc2.her] mouth, as well as all over [npc2.her] [npc2.face]."));
 						}
 					}
 				}

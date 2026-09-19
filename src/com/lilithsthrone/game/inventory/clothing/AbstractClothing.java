@@ -123,6 +123,7 @@ public abstract class AbstractClothing extends AbstractCoreItem implements XMLSa
 		displacedList = new ArrayList<>();
 
 		if(allowRandomEnchantment
+				&& !getClothingType().isDefaultSlotCondom() // Don't allow random enchantments on condoms as they have a special effect which should remain in place
 				&& getClothingType().getRarity()!=Rarity.LEGENDARY
 				&& getClothingType().getRarity()!=Rarity.QUEST) { // && effects.isEmpty() && getClothingType().getRarity() == Rarity.COMMON
 			int chance = Util.random.nextInt(100) + 1;
@@ -1111,8 +1112,12 @@ public abstract class AbstractClothing extends AbstractCoreItem implements XMLSa
 			}
 			description += st.getDescription();
 		}
-
-		return UtilText.parse(characterEquippedOn, this, description);
+//		if(characterEquippedOn==null) {
+//			System.err.println("ERROR: null character in getTypeDescription() for "+this.getClothingType().getName());
+//			new Exception().printStackTrace();
+//		}
+		
+		return UtilText.parse(characterEquippedOn==null?Main.game.getPlayer():characterEquippedOn, this, description);
 	}
 	
 	@Override
@@ -2234,7 +2239,9 @@ public abstract class AbstractClothing extends AbstractCoreItem implements XMLSa
 	 */
 	public void setSealed(boolean sealed) {
 		if(sealed) {
-			this.addEffect(new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_SPECIAL, TFModifier.CLOTHING_SEALING, TFPotency.MINOR_BOOST, 0));
+			if(!this.isSealed()) { // If this item is already sealed, don't add another effect...
+				this.addEffect(new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_SPECIAL, TFModifier.CLOTHING_SEALING, TFPotency.MINOR_BOOST, 0));
+			}
 		} else {
 			setUnlocked(true);
 //			this.getEffects().removeIf(e -> e.getSecondaryModifier() == TFModifier.CLOTHING_SEALING);
@@ -2255,6 +2262,9 @@ public abstract class AbstractClothing extends AbstractCoreItem implements XMLSa
 		for(ItemEffect effect : this.getEffects()) {
 			if(effect.getSecondaryModifier()==TFModifier.CLOTHING_SEALING) {
 				switch(effect.getPotency()) {
+					case SPECIAL:
+						cost += ItemEffect.SEALED_COST_SPECIAL;
+						break;
 					case BOOST:
 						break;
 					case DRAIN:
@@ -2545,7 +2555,18 @@ public abstract class AbstractClothing extends AbstractCoreItem implements XMLSa
 		effects.add(new ItemEffect(itemEffectType, primaryModifier, secondaryModifier, potency, limit));
 		sortEffects();
 	}
-
+	
+	/**
+	 * Removes <b>all</b> ItemEffects from this item of clothing which have the provided modifiers as either a primary or secondary modifier.
+	 * <br/><b>Do not call when equipped to someone!</b> (It will not update the wearer's attributes.)
+	 */
+	public void removeEffectsByModifier(TFModifier... modifiers) {
+		for(TFModifier mod : modifiers) {			
+			effects.removeIf(ie -> ie.getPrimaryModifier()==mod || ie.getSecondaryModifier()==mod);
+		}
+		sortEffects();
+	}
+	
 	/**
 	 * <b>Do not call when equipped to someone!</b> (It will not update the wearer's attributes.)
 	 */

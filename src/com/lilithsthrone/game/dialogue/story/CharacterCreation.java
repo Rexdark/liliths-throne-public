@@ -186,6 +186,8 @@ public class CharacterCreation {
 		
 		Main.game.getPlayer().setFacialHair(BodyHair.ZERO_NONE);
 		resetFemininityAppearance();
+		
+		CharacterModificationUtils.resetCoveringsToBeApplied();
 	}
 	
 	public static void resetFemininityAppearance() {
@@ -660,10 +662,10 @@ public class CharacterCreation {
 //						getDressed();
 					}
 				};
-				
-			} else if (index == 0) {
-				return new Response("Back", "Return to the main menu.", OptionsDialogue.MENU);
 			}
+//			else if (index == 0) {
+//				return new Response("Back", "Return to the main menu.", OptionsDialogue.MENU);
+//			}
 			return null;
 		}
 	};

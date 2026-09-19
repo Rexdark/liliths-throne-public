@@ -110,13 +110,34 @@ public class BatCavernSlimeAttacker extends NPC {
 	}
 
 	@Override
+	public void setStartingPersona(boolean setPersonality, boolean setFetishes, boolean setOrientation, boolean setHistory, boolean setSpells) {
+		if(setPersonality) {
+		}
+		
+		if(setFetishes) {
+		}
+		
+		if(setOrientation) {
+		}
+
+		if(setHistory) {
+		}
+		
+		if(setSpells) {
+		}
+	}
+	
+	@Override
 	public void setStartingBody(boolean setPersona) {
+		if(setPersona) {
+			setStartingPersona();
+		}
 		// Not needed
 	}
 
 	@Override
 	public void equipClothing(List<EquipClothingSetting> settings) {
-		this.incrementMoney((int) (this.getInventory().getNonEquippedValue() * 0.5f));
+		this.incrementMoney((long) (this.getInventory().getNonEquippedValue() * 0.5f));
 		this.clearNonEquippedInventory(false);
 		Main.game.getCharacterUtils().generateItemsInInventory(this, true, true, true);
 

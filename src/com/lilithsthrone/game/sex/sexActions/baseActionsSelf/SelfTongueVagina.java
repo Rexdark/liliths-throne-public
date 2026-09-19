@@ -30,8 +30,8 @@ public class SelfTongueVagina {
 			SexParticipantType.SELF) {
 		@Override
 		public boolean isBaseRequirementsMet() {
-			return !Main.sex.getCharacterPerformingAction().isTaur()
-					&& Main.sex.getPosition().isSelfOralAvailable(Main.sex.getCharacterPerformingAction())
+			return Main.sex.getPosition().isSelfOralAvailable(Main.sex.getCharacterPerformingAction())
+					&& !Main.sex.isPenetrationNonSelfOngoingAction(Main.sex.getCharacterPerformingAction(), SexAreaPenetration.PENIS) // cannot autocunnilingus if have a penis and using it
 					&& (Main.sex.getCharacterPerformingAction().hasPerkAnywhereInTree(Perk.HYPERMOBILITY)
 							|| Main.sex.getCharacterPerformingAction().hasPerkAnywhereInTree(Perk.DOLL_PHYSICAL_1));
 		}

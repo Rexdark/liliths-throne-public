@@ -316,6 +316,18 @@ public class BodyChanging {
 			return allRaces;
 		} else if (target.isDoll()) {
 			return Util.newArrayListOfValues(Race.NONE, target.getFleshSubspecies().getRace());
+		} else if(target.isYouko()) {
+			allowedRaces.add(Race.FOX_MORPH);
+			allowedRaces.add(Race.HUMAN);
+		} else if(isSlimeTFMenu() || target.isElemental()) {
+			for (AbstractRace race : allRaces) {
+				if (race!=Race.NONE
+						&& Main.getProperties().isAdvancedRaceKnowledgeDiscovered(AbstractSubspecies.getMainSubspeciesOfRace(race))
+//						&& Main.getProperties().isRaceDiscovered(AbstractSubspecies.getMainSubspeciesOfRace(race))
+						) {
+					allowedRaces.add(race);
+				}
+			}
 		} else if (isHalfDemon()) {
 			if (forceDemon) {
 				return Util.newArrayListOfValues(Race.DEMON);
@@ -326,15 +338,6 @@ public class BodyChanging {
 			}
 			if (allowHDHuman) {
 				allowedRaces.add(Race.HUMAN);
-			}
-		} else if(target.isYouko()) {
-			allowedRaces.add(Race.FOX_MORPH);
-			allowedRaces.add(Race.HUMAN);
-		} else if(isSlimeTFMenu() || target.isElemental()) {
-			for (AbstractRace race : allRaces) {
-				if (race!=Race.NONE && Main.getProperties().isRaceDiscovered(AbstractSubspecies.getMainSubspeciesOfRace(race))) {
-					allowedRaces.add(race);
-				}
 			}
 		} else if (ScarlettsShop.isSlaveCustomisationMenu()) {
 			for (AbstractRace race : allRaces) {
@@ -409,11 +412,11 @@ public class BodyChanging {
 	private static boolean isDemonTFMenu() {
 		return !isDebugMenu()
 				&& (getTarget().getSubspeciesOverride()==Subspecies.IMP
-				|| getTarget().getSubspeciesOverride()==Subspecies.IMP_ALPHA
-				|| getTarget().getSubspeciesOverride()==Subspecies.HALF_DEMON
-				|| getTarget().getSubspeciesOverride()==Subspecies.DEMON
-				|| getTarget().getSubspeciesOverride()==Subspecies.LILIN
-				|| getTarget().getSubspeciesOverride()==Subspecies.ELDER_LILIN);
+					|| getTarget().getSubspeciesOverride()==Subspecies.IMP_ALPHA
+					|| getTarget().getSubspeciesOverride()==Subspecies.HALF_DEMON
+					|| getTarget().getSubspeciesOverride()==Subspecies.DEMON
+					|| getTarget().getSubspeciesOverride()==Subspecies.LILIN
+					|| getTarget().getSubspeciesOverride()==Subspecies.ELDER_LILIN);
 	}
 
 	private static boolean isSelfTFMenu() {
@@ -425,7 +428,7 @@ public class BodyChanging {
 
 	private static boolean isSlimeTFMenu() {
 		return !isDebugMenu()
-				&& !isDemonTFMenu()
+//				&& !isDemonTFMenu()
 				&& !isSelfTFMenu()
 				&& getTarget().getBodyMaterial()==BodyMaterial.SLIME;
 	}
@@ -452,7 +455,7 @@ public class BodyChanging {
 			} else if(isSelfTFMenu()) {
 				sb.append("<i>[npc.Name] can harness [npc.her] innate powers to self-transform aspects of [npc.her] "+area+".</i>");
 				if(target.isElemental()) {
-					sb.append("<br/>[style.italicsMinorBad(You can only transform [npc.name] into races which you've previously encountered.)]");
+					sb.append("<br/>[style.italicsMinorBad(You can only transform [npc.name] into races which you've unlocked advanced knowledge of.)]");
 				}
 
 			} else if(isDebugMenu()) {
@@ -464,9 +467,9 @@ public class BodyChanging {
 			} else {
 				sb.append("<i>[npc.NamePos] morphable, slimy body [npc.verb(allow)] [npc.herHim] to self-transform aspects of [npc.her] "+area+".</i>");
 				if(getTarget().isPlayer()) {
-					sb.append("<br/>[style.italicsMinorBad(You can only self-transform into races which you've previously encountered.)]");
+					sb.append("<br/>[style.italicsMinorBad(You can only self-transform into races which you've unlocked advanced knowledge of.)]");
 				} else {
-					sb.append("<br/>[style.italicsMinorBad(You can only transform [npc.name] into races which you've previously encountered.)]");
+					sb.append("<br/>[style.italicsMinorBad(You can only transform [npc.name] into races which you've unlocked advanced knowledge of.)]");
 				}
 			}
 		sb.append("</div>");

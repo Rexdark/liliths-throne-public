@@ -70,7 +70,7 @@ public class CharacterInventory implements XMLSaving {
 	private final Map<String, List<InventorySlot>> unlockKeyMap;
 
 	protected int essenceCount;
-	protected int money;
+	protected long money;
 	
 	private Set<InventorySlot> dirtySlots;
 	
@@ -122,6 +122,15 @@ public class CharacterInventory implements XMLSaving {
 		}
 		
 		this.maxInventorySpace = maxInventorySpace;
+	}
+	
+	public CharacterInventory duplicateInventory() {
+		Document doc = Main.getDocBuilder().newDocument();
+		Element mainNode = doc.createElement("mainNode");
+		this.saveAsXML(mainNode, doc);
+		CharacterInventory newInventory = loadFromXML(mainNode, doc);
+		
+		return newInventory;
 	}
 	
 	public static CharacterInventory getCopyOfInventory(CharacterInventory inventoryToCopy) {
@@ -284,7 +293,7 @@ public class CharacterInventory implements XMLSaving {
 			inventory.floorInventory = CharacterInventory.loadingFromFloorBackupCheck;
 		}
 		
-		inventory.setMoney(Integer.valueOf(((Element)parentElement.getElementsByTagName("money").item(0)).getAttribute("value")));
+		inventory.setMoney(Long.valueOf(((Element)parentElement.getElementsByTagName("money").item(0)).getAttribute("value")));
 		
 		if(parentElement.getElementsByTagName("essences").item(0)!=null) { // Old version support.
 			inventory.setEssenceCount(Integer.valueOf(((Element)parentElement.getElementsByTagName("essences").item(0)).getAttribute("value")));
@@ -463,25 +472,25 @@ public class CharacterInventory implements XMLSaving {
 				&& clothingCurrentlyEquipped.isEmpty();
 	}
 
-	public int getMoney() {
+	public long getMoney() {
 		return money;
 	}
 
 	/**
 	 * Does not allow money to fall below 0.
 	 */
-	public void setMoney(int newValue) {
+	public void setMoney(long newValue) {
 		money = Math.max(0, newValue);
 	}
 	
 	/**
 	 * Does not allow money to fall below 0.
 	 */
-	public void incrementMoney(int increment) {
+	public void incrementMoney(long increment) {
 		try {
 			setMoney(Math.addExact(money, increment));
 		} catch (ArithmeticException ex) {
-			setMoney(Integer.MAX_VALUE);
+			setMoney(Long.MAX_VALUE);
 		}
 	}
 	
@@ -567,6 +576,13 @@ public class CharacterInventory implements XMLSaving {
 				+ getUniqueItemCount() - getUniqueQuestItemCount();
 	}
 
+	/**
+	 * @return A float from 0->1 representing the percentage of space that's occupied in this inventory.
+	 */
+	public float getInventorySpaceTaken() {
+		return getInventorySlotsTaken() / (float)getMaximumInventorySpace();
+	}
+	
 	/**
 	 * @return true if this inventory contains any unique clothing, weapons, or items.
 	 */
@@ -1744,8 +1760,9 @@ public class CharacterInventory implements XMLSaving {
 				removalTextMap.put(c,
 						(equipTextSB.length() == 0 ? "" : "<br/>")
 						+ (dt == DisplacementType.REMOVE_OR_EQUIP
-							? (c == clothing ? c.onUnequipApplyEffects(characterClothingOwner, characterRemovingClothing, (Main.game.isInSex()?Main.sex.getSexPace(characterRemovingClothing)==SexPace.DOM_ROUGH:false))
-									: c.onUnequipText(characterClothingOwner, characterRemovingClothing, (Main.game.isInSex()?Main.sex.getSexPace(characterRemovingClothing)==SexPace.DOM_ROUGH:false)))
+							? (c == clothing
+								? c.onUnequipApplyEffects(characterClothingOwner, characterRemovingClothing, (Main.game.isInSex()?Main.sex.getSexPace(characterRemovingClothing)==SexPace.DOM_ROUGH:false))
+								: c.onUnequipText(characterClothingOwner, characterRemovingClothing, (Main.game.isInSex()?Main.sex.getSexPace(characterRemovingClothing)==SexPace.DOM_ROUGH:false)))
 							: c.getClothingType().displaceText(
 									characterClothingOwner,
 									characterRemovingClothing,

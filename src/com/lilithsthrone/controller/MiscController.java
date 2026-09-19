@@ -22,6 +22,8 @@ import com.lilithsthrone.game.character.fetishes.Fetish;
 import com.lilithsthrone.game.character.fetishes.FetishDesire;
 import com.lilithsthrone.game.character.persona.Name;
 import com.lilithsthrone.game.character.persona.NameTriplet;
+import com.lilithsthrone.game.character.race.AbstractRace;
+import com.lilithsthrone.game.character.race.Race;
 import com.lilithsthrone.game.combat.DamageType;
 import com.lilithsthrone.game.combat.moves.AbstractCombatMove;
 import com.lilithsthrone.game.combat.moves.CombatMove;
@@ -656,7 +658,7 @@ public class MiscController {
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}
 				}, false);
-				MainController.addTooltipListeners(id, new TooltipInformationEventListener().setFetish(f, targetedCharacter));
+				MainController.addTooltipListeners(id, new TooltipInformationEventListener().setFetish(f, targetedCharacter, true));
 			}
 			
 			id = Fetish.getIdFromFetish(f)+"_EXPERIENCE";
@@ -681,6 +683,19 @@ public class MiscController {
 			}
 		}
 	}
+
+	public static void initEncyclopediaRaceListeners() {
+		for(AbstractRace race : Race.getAllRaces()) {
+			String id = "ENCYCLOPEDIA_RACE_"+Race.getIdFromRace(race);
+			if (MainController.document.getElementById(id) != null) {
+				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e->{
+					PhoneDialogue.applyRaceSelection(race);
+					Main.game.setContent(new Response("", "", PhoneDialogue.SUBSPECIES));
+				}, false);
+			}
+		}
+	}
+	
 	
 	public static void initMapListeners(AbstractWorldType worldType, boolean interactive) {
 		Cell[][] grid = Main.game.getWorlds().get(worldType).getGrid();

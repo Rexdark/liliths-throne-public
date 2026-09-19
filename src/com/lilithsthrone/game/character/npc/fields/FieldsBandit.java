@@ -144,13 +144,34 @@ public class FieldsBandit extends NPC {
 	}
 
 	@Override
+	public void setStartingPersona(boolean setPersonality, boolean setFetishes, boolean setOrientation, boolean setHistory, boolean setSpells) {
+		if(setPersonality) {
+		}
+		
+		if(setFetishes) {
+		}
+		
+		if(setOrientation) {
+		}
+
+		if(setHistory) {
+		}
+		
+		if(setSpells) {
+		}
+	}
+	
+	@Override
 	public void setStartingBody(boolean setPersona) {
+		if(setPersona) {
+			setStartingPersona();
+		}
 		// Not needed
 	}
 
 	@Override
 	public void equipClothing(List<EquipClothingSetting> settings) {
-		this.incrementMoney((int) (this.getInventory().getNonEquippedValue() * 2.5f));
+		this.incrementMoney((long) (this.getInventory().getNonEquippedValue() * 2.5f));
 		this.clearNonEquippedInventory(false);
 		Main.game.getCharacterUtils().generateItemsInInventory(this, true, true, true);
 		String outfitId = "innoxia_genericMugger_dominion_masculine";
@@ -216,7 +237,7 @@ public class FieldsBandit extends NPC {
 	
 	// Misc.:
 	
-	public int getPaymentDemand() {
+	public long getPaymentDemand() {
 		return (Math.max(2500, Math.min(Main.game.getPlayer().getMoney()/10, 10000))/500) * 500; // Round to nearest 500
 	}
 }

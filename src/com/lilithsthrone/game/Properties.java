@@ -80,7 +80,7 @@ public class Properties {
 	
 	public int fontSize = 18;
 	public int level = 1;
-	public int money = 0;
+	public long money = 0;
 	public int arcaneEssences = 0;
 	
 	// Taur furry options:
@@ -365,7 +365,10 @@ public class Properties {
 			if(!badEndTitle.isEmpty()) {
 				createXMLElementWithValue(doc, settings, "badEndTitle", badEndTitle);
 			}
+			
+
 			createXMLElementWithValue(doc, settings, "androgynousIdentification", String.valueOf(androgynousIdentification));
+			createXMLElementWithValue(doc, settings, "offspringGenderLevel", String.valueOf(offspringGenderLevel));
 			createXMLElementWithValue(doc, settings, "humanSpawnRate", String.valueOf(humanSpawnRate));
 			createXMLElementWithValue(doc, settings, "taurSpawnRate", String.valueOf(taurSpawnRate));
 			createXMLElementWithValue(doc, settings, "halfDemonSpawnRate", String.valueOf(halfDemonSpawnRate));
@@ -739,7 +742,7 @@ public class Properties {
 				race = ((Element)element.getElementsByTagName("race").item(0)).getAttribute("value");
 				quest = ((Element)element.getElementsByTagName("quest").item(0)).getAttribute("value");
 				level = Integer.valueOf(((Element)element.getElementsByTagName("level").item(0)).getAttribute("value"));
-				money = Integer.valueOf(((Element)element.getElementsByTagName("money").item(0)).getAttribute("value"));
+				money = Long.valueOf(((Element)element.getElementsByTagName("money").item(0)).getAttribute("value"));
 				if(element.getElementsByTagName("arcaneEssences").item(0)!=null) {
 					arcaneEssences = Integer.valueOf(((Element)element.getElementsByTagName("arcaneEssences").item(0)).getAttribute("value"));
 				}
@@ -897,6 +900,10 @@ public class Properties {
 					} else {
 						taurFurryLevel = 2;
 					}
+				}
+				
+				if(element.getElementsByTagName("offspringGenderLevel").item(0)!=null) {
+					offspringGenderLevel = Integer.valueOf(((Element)element.getElementsByTagName("offspringGenderLevel").item(0)).getAttribute("value"));
 				}
 				
 				if(element.getElementsByTagName("humanEncountersLevel").item(0)!=null) { // Old version support:
@@ -1474,8 +1481,8 @@ public class Properties {
 	
 	public void completeSharedEncyclopedia() {
 		for(AbstractSubspecies subspecies : Subspecies.getAllSubspecies()) {
-			this.addRaceDiscovered(subspecies);
-			this.addAdvancedRaceKnowledge(subspecies);
+			this.addRaceDiscovered(subspecies, false);
+			this.addAdvancedRaceKnowledge(subspecies, false);
 		}
 		for(AbstractItemType itemType : ItemType.getAllItems()) {
 			this.addItemDiscovered(itemType);
@@ -1487,6 +1494,13 @@ public class Properties {
 			this.addWeaponDiscovered(weaponType);
 		}
 	}
+	
+	public void addAllDiscoveredFromCurrentPlayer() {
+		Main.game.getPlayer().applyDiscoveriesToProperties();
+	}
+	
+	
+	//TODO counts below
 	
 	public int getItemsDiscoveredCount() {
 		if(!this.hasValue(PropertyValue.sharedEncyclopedia)) {
@@ -1513,10 +1527,13 @@ public class Properties {
 
 	/** This method <b>takes into account</b> the 'shared Encyclopedia' content setting. */
 	public boolean isItemDiscovered(AbstractItemType itemType) {
+		if(Main.game.getPlayer().isItemDiscovered(itemType)) {
+			return true;
+		}
 		if(this.hasValue(PropertyValue.sharedEncyclopedia)) {
 			return itemsDiscovered.contains(itemType);
 		}
-		return Main.game.getPlayer().isItemDiscovered(itemType);
+		return false;
 	}
 
 	public void resetItemDiscovered() {
@@ -1548,10 +1565,13 @@ public class Properties {
 
 	/** This method <b>takes into account</b> the 'shared Encyclopedia' content setting. */
 	public boolean isClothingDiscovered(AbstractClothingType clothingType) {
+		if(Main.game.getPlayer().isClothingDiscovered(clothingType)) {
+			return true;
+		}
 		if(this.hasValue(PropertyValue.sharedEncyclopedia)) {
 			return clothingDiscovered.contains(clothingType);
 		}
-		return Main.game.getPlayer().isClothingDiscovered(clothingType);
+		return false;
 	}
 
 	public void resetClothingDiscovered() {
@@ -1583,27 +1603,37 @@ public class Properties {
 
 	/** This method <b>takes into account</b> the 'shared Encyclopedia' content setting. */
 	public boolean isWeaponDiscovered(AbstractWeaponType weaponType) {
+		if(Main.game.getPlayer().isWeaponDiscovered(weaponType)) {
+			return true;
+		}
 		if(this.hasValue(PropertyValue.sharedEncyclopedia)) {
 			return weaponsDiscovered.contains(weaponType);
 		}
-		return Main.game.getPlayer().isWeaponDiscovered(weaponType);
+		return false;
 	}
 
 	public void resetWeaponDiscovered() {
 		weaponsDiscovered.clear();
 	}
-
+	
 	public int getSubspeciesDiscoveredCount() {
-		if(!this.hasValue(PropertyValue.sharedEncyclopedia)) {
-			return Main.game.getPlayer().getSubspeciesDiscoveredCount();
+		Set<AbstractSubspecies> combinedDiscoverySet = new HashSet<>(Main.game.getPlayer().getSubspeciesDiscovered());
+		if(this.hasValue(PropertyValue.sharedEncyclopedia)) {
+			combinedDiscoverySet.addAll(subspeciesDiscovered);
 		}
-		return subspeciesDiscovered.size();
+		return combinedDiscoverySet.size();
+	}
+
+	public boolean addRaceDiscovered(AbstractSubspecies subspecies) {
+		return addRaceDiscovered(subspecies, true);
 	}
 	
-	public boolean addRaceDiscovered(AbstractSubspecies subspecies) {
+	public boolean addRaceDiscovered(AbstractSubspecies subspecies, boolean withEvent) {
 		boolean playerDiscovered = Main.game.getPlayer().addRaceDiscovered(subspecies);
 		if(subspeciesDiscovered.add(subspecies) || (!this.hasValue(PropertyValue.sharedEncyclopedia) && playerDiscovered)) {
-			Main.game.addEvent(new EventLogEntryEncyclopediaUnlock(subspecies.getName(null), subspecies.getColour(null)), true);
+			if(withEvent) {
+				Main.game.addEvent(new EventLogEntryEncyclopediaUnlock(subspecies.getName(null), subspecies.getColour(null)), true);
+			}
 			setValue(PropertyValue.newRaceDiscovered, true);
 			return true;
 		}
@@ -1612,10 +1642,13 @@ public class Properties {
 
 	/** This method <b>takes into account</b> the 'shared Encyclopedia' content setting. */
 	public boolean isRaceDiscovered(AbstractSubspecies subspecies) {
+		if(Main.game.getPlayer().isRaceDiscovered(subspecies)) {
+			return true;
+		}
 		if(this.hasValue(PropertyValue.sharedEncyclopedia)) {
 			return subspeciesDiscovered.contains(subspecies);
 		}
-		return Main.game.getPlayer().isRaceDiscovered(subspecies);
+		return false;
 	}
 
 	public void resetRaceDiscovered() {
@@ -1623,16 +1656,23 @@ public class Properties {
 	}
 
 	public int getSubspeciesAdvancedDiscoveredCount() {
-		if(!this.hasValue(PropertyValue.sharedEncyclopedia)) {
-			return Main.game.getPlayer().getSubspeciesAdvancedDiscoveredCount();
+		Set<AbstractSubspecies> combinedDiscoverySet = new HashSet<>(Main.game.getPlayer().getSubspeciesAdvancedDiscovered());
+		if(this.hasValue(PropertyValue.sharedEncyclopedia)) {
+			combinedDiscoverySet.addAll(subspeciesAdvancedKnowledge);
 		}
-		return subspeciesAdvancedKnowledge.size();
+		return combinedDiscoverySet.size();
+	}
+
+	public boolean addAdvancedRaceKnowledge(AbstractSubspecies subspecies) {
+		return addAdvancedRaceKnowledge(subspecies, true);
 	}
 	
-	public boolean addAdvancedRaceKnowledge(AbstractSubspecies subspecies) {
+	public boolean addAdvancedRaceKnowledge(AbstractSubspecies subspecies, boolean withEvent) {
 		boolean playerDiscovered = Main.game.getPlayer().addAdvancedRaceKnowledge(subspecies);
 		if(subspeciesAdvancedKnowledge.add(subspecies) || (!this.hasValue(PropertyValue.sharedEncyclopedia) && playerDiscovered)) {
-			Main.game.addEvent(new EventLogEntryEncyclopediaUnlock(subspecies.getName(null)+" (Advanced)", subspecies.getColour(null)), true);
+			if(withEvent) {
+				Main.game.addEvent(new EventLogEntryEncyclopediaUnlock(subspecies.getName(null)+" (Advanced)", subspecies.getColour(null)), true);
+			}
 			return true;
 		}
 		return false;
@@ -1640,6 +1680,9 @@ public class Properties {
 
 	/** This method <b>takes into account</b> the 'shared Encyclopedia' content setting. */
 	public boolean isAdvancedRaceKnowledgeDiscovered(AbstractSubspecies subspecies) {
+		if(Main.game.getPlayer().isAdvancedRaceKnowledgeDiscovered(subspecies)) {
+			return true;
+		}
 		if(this.hasValue(PropertyValue.sharedEncyclopedia)) {
 			if(subspeciesAdvancedKnowledge.contains(subspecies)) {
 				return true;
@@ -1652,7 +1695,7 @@ public class Properties {
 			
 			return false;
 		}
-		return Main.game.getPlayer().isAdvancedRaceKnowledgeDiscovered(subspecies);
+		return false;
 	}
 
 	public void resetAdvancedRaceKnowledge() {

@@ -3,6 +3,7 @@ package com.lilithsthrone.game.character.npc.fields;
 import java.time.Month;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -140,20 +141,18 @@ public class Yui extends NPC {
 	}
 
 	@Override
-	public void setStartingBody(boolean setPersona) {
-		// Persona:
-
-		if(setPersona) {
+	public void setStartingPersona(boolean setPersonality, boolean setFetishes, boolean setOrientation, boolean setHistory, boolean setSpells) {
+		if(setPersonality) {
 			this.setPersonalityTraits(
 					PersonalityTrait.CONFIDENT,
 					PersonalityTrait.CYNICAL,
 					PersonalityTrait.SELFISH,
 					PersonalityTrait.LEWD);
-			
-			this.setSexualOrientation(SexualOrientation.AMBIPHILIC);
-			
-			this.setHistory(Occupation.NPC_STORE_OWNER);
-
+		}
+		
+		if(setFetishes) {
+			this.clearFetishDesires();
+			this.clearFetishes();
 			this.addFetish(Fetish.FETISH_DOMINANT);
 			this.addFetish(Fetish.FETISH_BONDAGE_APPLIER);
 			this.addFetish(Fetish.FETISH_DENIAL);
@@ -167,6 +166,24 @@ public class Yui extends NPC {
 
 			this.setFetishDesire(Fetish.FETISH_SUBMISSIVE, FetishDesire.ZERO_HATE);
 			this.setFetishDesire(Fetish.FETISH_NON_CON_SUB, FetishDesire.ZERO_HATE);
+		}
+		
+		if(setOrientation) {
+			this.setSexualOrientation(SexualOrientation.AMBIPHILIC);
+		}
+
+		if(setHistory) {
+			this.setHistory(Occupation.NPC_STORE_OWNER);
+		}
+		
+		if(setSpells) {
+		}
+	}
+	
+	@Override
+	public void setStartingBody(boolean setPersona) {
+		if(setPersona) {
+			setStartingPersona();
 		}
 		
 		// Body:
@@ -306,18 +323,27 @@ public class Yui extends NPC {
 				clothingTypesToSell.add(clothing);
 			}
 		}
-		
-		// Limit number of clothing types to 80% inventory size:
-		while(clothingTypesToSell.size() >= this.getMaximumInventorySpace() * 0.8) {
-			clothingTypesToSell.remove(Util.random.nextInt(clothingTypesToSell.size()));
-		}
-		
-		for(AbstractClothingType type : clothingTypesToSell) {
-			this.addClothing(Main.game.getItemGen().generateClothing(type, false), false);
-		}
-		
+
 		for(int i=0; i<3; i++) {
 			this.addWeapon(Main.game.getItemGen().generateWeapon("innoxia_bdsm_riding_crop"), false);
+		}
+		
+//		// Limit number of clothing types to 80% inventory size:
+//		while(clothingTypesToSell.size() >= this.getMaximumInventorySpace() * 0.8) {
+//			clothingTypesToSell.remove(Util.random.nextInt(clothingTypesToSell.size()));
+//		}
+		
+		Collections.shuffle(clothingTypesToSell);
+		
+		for(AbstractClothingType type : clothingTypesToSell) {
+			for(int i=0; i<1+Util.random.nextInt(2); i++) {
+				AbstractClothing c = Main.game.getItemGen().generateClothing(type, false);
+				c.removeEffectsByModifier(TFModifier.CLOTHING_ENSLAVEMENT);
+				this.addClothing(c, false);
+			}
+			if(this.getInventorySpaceTaken()>0.9f) {
+				break;
+			}
 		}
 		
 		this.addItem(Main.game.getItemGen().generateItem(ItemType.DYE_BRUSH), 10, false, false);
@@ -499,7 +525,14 @@ public class Yui extends NPC {
 		}
 	}
 	
+	public boolean isAnalBeadsEquipped(GameCharacter target) {
+		return target.getClothingInSlot(InventorySlot.ANUS)!=null && target.getClothingInSlot(InventorySlot.ANUS).getClothingType()==ClothingType.getClothingTypeFromId("norin_anal_beads_anal_beads");
+	}
+	
 	public void applyAnalBeads(GameCharacter target, GameCharacter equipper) {
+		if(isAnalBeadsEquipped(target)) {
+			return;
+		}
 		if(target.getClothingInSlot(InventorySlot.ANUS)!=null) {
 			target.unequipClothingIntoVoid(InventorySlot.ANUS, true, equipper);
 		}
@@ -543,8 +576,11 @@ public class Yui extends NPC {
 		client.setDescription("This is one of Yui's clients, who's paid her to visit her basement and roughly fuck the pathetic sub who's tied up down there. Tonight, that pathetic sub is you.");
 		
 		// Determines how the client treats the player (by default they punish player):
-		if(Util.random.nextInt(100)<33 && Main.game.getPlayer().hasVagina()) {
-			// Breeder:
+		if(Util.random.nextInt(100)<33
+				&& Main.game.getPlayer().hasVagina()
+				&& !Main.game.getPlayer().isVisiblyPregnant()
+				&& (!Main.game.getPlayer().hasStatusEffect(StatusEffect.PREGNANT_0)
+						|| Main.game.getPlayer().getStatusEffectDuration(StatusEffect.PREGNANT_0)<60*30)) { // ONly spawn a breeder NPC if the player is not pregnant and the 'risk of pregnancy' has over 30mins before resolution
 			client.addFetish(Fetish.FETISH_IMPREGNATION);
 			if(client.getPenisRawCumStorageValue()<250) {
 				client.setPenisCumStorage(250);
@@ -552,6 +588,13 @@ public class Yui extends NPC {
 				client.setPenisCumProductionRegeneration(FluidRegeneration.THREE_RAPID.getMedianRegenerationValuePerDay());
 			}
 		}
+		
+		if(!client.hasFetish(Fetish.FETISH_IMPREGNATION)) {
+			if(Util.random.nextInt(100)<50) { // For an alternate intro:
+				client.addFetish(Fetish.FETISH_VOYEURIST);
+			}
+		}
+		
 		
 		client.addFetish(Fetish.FETISH_DOMINANT);
 		client.addFetish(Fetish.FETISH_SADIST);
@@ -588,6 +631,13 @@ public class Yui extends NPC {
 	}
 	
 	public void applyClientIntro(GameCharacter client) {
+		if(Main.game.getPlayer().hasFetish(Fetish.FETISH_INCEST) && Math.random()<0.33f) {
+			if(client.isFeminine()) {
+				client.setGenericName("Mommy");
+			} else {
+				client.setGenericName("Daddy");
+			}
+		}
 		if(client.isFeminine()) {
 			client.setGenericName("Mistress");
 		} else {
@@ -603,6 +653,9 @@ public class Yui extends NPC {
 	
 	public void applyNightOfSex(GameCharacter target, int stage) {
 		int numberOfClients = 5 + Util.random.nextInt(4); // 5-8 more clients
+		if(Main.game.isHourBetween(3, 12)) {
+			numberOfClients = 1 + Util.random.nextInt(3); // If after 03:00, just 1-3 more clients
+		}
 		
 		// For each client, get fucked in mouth, pussy, and ass:
 		for(int i=0; i<numberOfClients; i++) {

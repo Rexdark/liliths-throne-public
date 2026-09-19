@@ -164,6 +164,7 @@ import com.lilithsthrone.game.character.npc.fields.Nir;
 import com.lilithsthrone.game.character.npc.fields.Nizhoni;
 import com.lilithsthrone.game.character.npc.fields.Oglix;
 import com.lilithsthrone.game.character.npc.fields.Penelope;
+import com.lilithsthrone.game.character.npc.fields.Shiranui;
 import com.lilithsthrone.game.character.npc.fields.Silvia;
 import com.lilithsthrone.game.character.npc.fields.Sleip;
 import com.lilithsthrone.game.character.npc.fields.Sterope;
@@ -185,6 +186,7 @@ import com.lilithsthrone.game.character.npc.misc.NPCOffspring;
 import com.lilithsthrone.game.character.npc.misc.OffspringSeed;
 import com.lilithsthrone.game.character.npc.misc.PrologueFemale;
 import com.lilithsthrone.game.character.npc.misc.PrologueMale;
+import com.lilithsthrone.game.character.npc.misc.SlaveForSale;
 import com.lilithsthrone.game.character.npc.misc.SlaveImport;
 import com.lilithsthrone.game.character.npc.submission.Axel;
 import com.lilithsthrone.game.character.npc.submission.Claire;
@@ -209,7 +211,10 @@ import com.lilithsthrone.game.character.npc.submission.SlimeRoyalGuard;
 import com.lilithsthrone.game.character.npc.submission.Takahashi;
 import com.lilithsthrone.game.character.npc.submission.Vengar;
 import com.lilithsthrone.game.character.persona.Occupation;
+import com.lilithsthrone.game.character.persona.PersonalityCategory;
+import com.lilithsthrone.game.character.persona.PersonalityTrait;
 import com.lilithsthrone.game.character.persona.SexualOrientation;
+import com.lilithsthrone.game.character.pregnancy.FertilisationType;
 import com.lilithsthrone.game.character.pregnancy.Litter;
 import com.lilithsthrone.game.character.quests.Quest;
 import com.lilithsthrone.game.character.quests.QuestLine;
@@ -269,6 +274,7 @@ import com.lilithsthrone.game.inventory.clothing.AbstractClothing;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothingType;
 import com.lilithsthrone.game.inventory.clothing.ClothingType;
 import com.lilithsthrone.game.inventory.enchanting.AbstractItemEffectType;
+import com.lilithsthrone.game.inventory.enchanting.ItemEffectType;
 import com.lilithsthrone.game.inventory.item.AbstractItem;
 import com.lilithsthrone.game.inventory.item.AbstractItemType;
 import com.lilithsthrone.game.inventory.item.ItemType;
@@ -1138,6 +1144,7 @@ public class Game implements XMLSaving {
 							&& (!worldType.equals("innoxia_dominion_sex_shop") || !Main.isVersionOlderThan(loadingVersion, "0.4.9.12"))
 							&& (!worldType.equals("innoxia_dominion_sex_shop_factory") || !Main.isVersionOlderThan(loadingVersion, "0.4.9.13"))
 							&& (!worldType.equals("BOUNTY_HUNTER_LODGE_UPSTAIRS") || !Main.isVersionOlderThan(loadingVersion, "0.4.10.2"))
+							&& (!worldType.equals("innoxia_shinrin_highlands_hideout") || !Main.isVersionOlderThan(loadingVersion, "0.4.11.6"))
 							&& !worldType.equals("SUPPLIER_DEN") // Removed
 							&& !worldType.equals("JUNGLE") // Removed
 //                          && !worldType.equals("REBEL_BASE")
@@ -2143,6 +2150,63 @@ public class Game implements XMLSaving {
 					}
 				}
 				
+				// Add cafe slaves to Finch's owned slaves:
+				if(Main.isVersionOlderThan(loadingVersion, "0.4.11.3")) {
+					for(NPC npc :Main.game.getAllNPCs()) {
+						if(npc instanceof SlaveForSale
+								&& !npc.isSlave()
+								&& !Main.game.getPlayer().getFriendlyOccupants().contains(npc.getId())
+								&& (npc.getLocationPlaceType()==PlaceType.SLAVER_ALLEY_CAFE
+									|| npc.getLocationPlaceType()==PlaceType.SLAVER_ALLEY_CAFE_2
+									|| npc.getLocationPlaceType()==PlaceType.SLAVER_ALLEY_CAFE_3
+									|| npc.getLocationPlaceType()==PlaceType.SLAVER_ALLEY_CAFE_4)) {
+							Main.game.getNpc(Finch.class).addSlave(npc);
+						}
+					}
+				}
+
+				// Fix bug where personalities were all deleted:
+				if(Main.isVersionOlderThan(loadingVersion, "0.4.11.8")) {
+					if(!Main.game.getNpc(Lilaya.class).isShy()) { // Lilaya's personality was deleted, so reset all:
+						for(NPC npc : Main.game.getAllNPCs()) {
+							if(npc.isUnique()) {
+								npc.setStartingPersona(true, false, false, false, false);
+								
+							} else { // Regenerate personalities
+								// Starting personalities based on race, copied from GameCharacter.additionalBodySetup():
+								for(Entry<PersonalityTrait, Float> entry : npc.getRace().getRacialBody().getPersonalityTraitChances().entrySet()) {
+									double rnd = Math.random();
+									if(rnd<=entry.getValue()) {
+										npc.addPersonalityTrait(entry.getKey());
+									}
+								}
+
+								for(Entry<PersonalityTrait, Float> entry : npc.getTrueSubspecies().getPersonalityTraitChances().entrySet()) {
+									double rnd = Math.random();
+									if(rnd<=entry.getValue()) {
+										npc.addPersonalityTrait(entry.getKey());
+									}
+								}
+								
+								if(npc.hasPersonalityTrait(PersonalityTrait.MUTE)) { // If mute, remove all other speech traits
+									npc.removePersonalityTraits(PersonalityCategory.SPEECH);
+									npc.addPersonalityTrait(PersonalityTrait.MUTE);
+								}
+								
+								// Roughly copying effects from CharacterUtils' setHistoryAndPersonality():
+								if(npc.getHistory()==Occupation.NPC_PROSTITUTE) {
+									npc.removePersonalityTrait(PersonalityTrait.PRUDE);
+									npc.removePersonalityTrait(PersonalityTrait.INNOCENT);
+								}
+								if(npc.getHistory().isLowlife()) {
+									if(Math.random()<0.25f) {
+										npc.addPersonalityTrait(PersonalityTrait.SLOVENLY);
+									}
+								}
+							}
+						}
+					}
+				}
 				
 				if(debug) {
 					System.out.println("New NPCs finished");
@@ -2188,6 +2252,9 @@ public class Game implements XMLSaving {
 		Main.game.getPlayer().updateInventoryListeners();
 		Main.game.getPlayer().updateAttributeListeners(true);
 		Main.game.getPlayer().calculateStatusEffects(0);
+		
+		Main.getProperties().addAllDiscoveredFromCurrentPlayer();
+		Main.saveProperties();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -2716,6 +2783,9 @@ public class Game implements XMLSaving {
 			if(!Main.game.NPCMap.containsKey(Main.game.getUniqueNPCId(Ursa.class))) { addNPC(new Ursa(), false); addedNpcs.add(Ursa.class); }
 			if(!Main.game.NPCMap.containsKey(Main.game.getUniqueNPCId(Aurokaris.class))) { addNPC(new Aurokaris(), false); addedNpcs.add(Aurokaris.class); }
 			
+			// Shinrin Highlands:
+			if(!Main.game.NPCMap.containsKey(Main.game.getUniqueNPCId(Shiranui.class))) { addNPC(new Shiranui(), false); addedNpcs.add(Shiranui.class); }
+			
 			// Elder lilin:
 			if(!Main.game.NPCMap.containsKey(Main.game.getUniqueNPCId(Lunette.class))) { addNPC(new Lunette(), false); addedNpcs.add(Lunette.class); }
 			if(addedNpcs.contains(Lunette.class)) {
@@ -2858,9 +2928,23 @@ public class Game implements XMLSaving {
 				character.setLocation(Main.game.getPlayer().getWorldLocation(), Main.game.getPlayer().getLocation(), false);
 			}
 		}
-
+		
 		if(loopDebug) {
 			System.out.println("companions done");
+		}
+		
+		// If a place type has been modified, need to recalculate availability of slave jobs before running occupancyUtil.performHourlyUpdate()
+		if(occupancyUtil.isSlaveJobsRecalculationRequired()) {
+			System.out.println(":3");
+			for(String slaveId : occupancyUtil.getAllCharacters()) {
+				try {
+					GameCharacter occupant = Main.game.getNPCById(slaveId);
+					occupant.recalculateSlaveJobs();
+					System.out.println("reset: "+occupant.getName());
+				} catch (Exception e) {
+				}
+			}
+			occupancyUtil.setSlaveJobsRecalculationRequired(false);
 		}
 		
 		// Occupancy:
@@ -3545,6 +3629,21 @@ public class Game implements XMLSaving {
 		return getWeather();
 	}
 	
+	public String getBodyStyle() {
+		// I thought that this would be funny, but after giving it some thought, the novelty would wear off quickly and end up being extremely annoying...
+//		try {
+//			if(Main.game.isStarted()
+//					&& Main.game.isSillyMode()
+//					&& StatusEffect.SHORT_SIGHTED.isConditionsMet(Main.game.getPlayer())) {
+//				return "filter:blur(1px);";
+//			}
+//		} catch(Exception ex) {
+//			System.err.println("ERROR: Silly mode vision blur failed to load correctly!");
+//			ex.printStackTrace();
+//		}
+		return "";
+	}
+	
 	/**
 	 * Sets the content of the main WebView based on the response of the current Dialogue Node's index.
 	 * 
@@ -3783,9 +3882,9 @@ public class Game implements XMLSaving {
 //				Main.mainController.unbindListeners();
 				setMainContentRegex(
 						((node.isContinuesDialogue() || response.isForceContinue()) && isContentScroll(response, node)
-							?"<body onLoad='scrollToElement()'>"
+							?"<body onLoad='scrollToElement()' style='"+getBodyStyle()+"'>"
 								+ "<script>function scrollToElement() {document.getElementById('content-block').scrollTop = document.getElementById('position" + (positionAnchor) + "').offsetTop -64;}</script>"
-							:"<body>"),
+							:"<body style='"+getBodyStyle()+"'>"),
 						currentDialogue);
 				
 				textEndStringBuilder.setLength(0);
@@ -3914,7 +4013,9 @@ public class Game implements XMLSaving {
 						positionAnchor++;
 					}
 					
-					pastDialogueSB.append(UtilText.parse("<hr id='position" + positionAnchor + "'><p class='option-disabled'>&gt " + node.getLabel() + "</p>"));
+					String displayActionString = response.getTitle(); // node.getLabel()
+					
+					pastDialogueSB.append(UtilText.parse("<hr id='position" + positionAnchor + "'><p class='option-disabled'>&gt " + displayActionString + "</p>"));
 				}
 				
 				dialogueParsed = UtilText.parse(
@@ -4038,13 +4139,13 @@ public class Game implements XMLSaving {
 		//-------------------- MEMORY LEAK PROBLEM
 		setMainContentRegex(node.isContinuesDialogue() || response.isForceContinue()
 				?(isContentScroll(response, node)
-					?"<body onLoad='scrollToElement()'>"
+					?"<body onLoad='scrollToElement()' style='"+getBodyStyle()+"'>"
 						+ "<script>function scrollToElement() {document.getElementById('content-block').scrollTop = document.getElementById('position" + (positionAnchor) + "').offsetTop -64;}</script>"
-					:"<body>")
+					:"<body style='"+getBodyStyle()+"'>")
 				:(isContentScroll(response, node)
-					?"<body onLoad='scrollToElement()'>"
+					?"<body onLoad='scrollToElement()' style='"+getBodyStyle()+"'>"
 						+ "<script>function scrollToElement() {document.getElementById('content-block').scrollTop = "+currentPosition+";}</script>"
-					:"<body>"),
+					:"<body style='"+getBodyStyle()+"'>"),
 				currentDialogue);
 		//--------------------
 		
@@ -4394,7 +4495,7 @@ public class Game implements XMLSaving {
 								: "")
 					+ "</div>"
 				+ "</div>"
-				+"<p style='text-align:center;font-size:0.6em;color:#777;'>Dialogue written by "+currentDialogueNode.getAuthor()+" for <i>"+Main.GAME_NAME+" v"+Main.VERSION_NUMBER+"</i></p>"
+				+"<p style='text-align:center;font-size:0.6em;color:#777;'>Dialogue written by "+currentDialogueNode.getAuthor()+" for <i>"+Main.NAME_OF_GAME+" v"+Main.VERSION_NUMBER+"</i></p>"
 				+ "</body>";
 	}
 
@@ -4714,9 +4815,9 @@ public class Game implements XMLSaving {
 		
 		setMainContentRegex(
 				(savedDialogueNode.getDialogueNodeType()!=DialogueNodeType.PHONE && savedDialogueNode.getDialogueNodeType()!=DialogueNodeType.CHARACTERS_PRESENT
-					?"<body onLoad='scrollToElement()'>"
+					?"<body onLoad='scrollToElement()' style='"+getBodyStyle()+"'>"
 						+ "<script>function scrollToElement() {document.getElementById('content-block').scrollTop = document.getElementById('position" + (positionAnchor) + "').offsetTop -64;}</script>"
-					:"<body>"),
+					:"<body style='"+getBodyStyle()+"'>"),
 			currentDialogue);
 
 		textEndStringBuilder.setLength(0);
@@ -6542,5 +6643,16 @@ public class Game implements XMLSaving {
 					"<p>"
 						+ UtilText.parse(character, "You start having sex with [npc.name]")
 					+ "</p>"));
+	}
+	
+	/**
+	 * Impregnate the character (with the player as the father) and advance pregnancy to the final stage.
+	 */
+	public void impregnate(GameCharacter character) {
+		character.guaranteePregnancyOnNextRoll();
+		character.rollForPregnancy(Main.game.getPlayer(), Main.game.getPlayer().getBody(), 100, true, FertilisationType.NORMAL, Attribute.VIRILITY);
+		ItemEffectType.MOTHERS_MILK.applyEffect(null, null, null, 0, character, character, null);
+		ItemEffectType.MOTHERS_MILK.applyEffect(null, null, null, 0, character, character, null);
+		ItemEffectType.MOTHERS_MILK.applyEffect(null, null, null, 0, character, character, null);
 	}
 }
